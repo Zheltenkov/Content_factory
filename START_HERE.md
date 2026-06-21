@@ -10,7 +10,9 @@
 - **Волна 1 — core готова:** harness/rules, LLM core, unified models, MethodologyGate, config/thresholds.
 - **Волна M — methodology готова до TM.4:** TM.1 эталоны, TM.2 базовые скиллы, TM.3 kids/commerce,
   TM.4 thin engine→harness→gate (`app/modules/generator/engine.py`).
-- **Дальше:** T2.1 curriculum pipeline или, если нужен порт генератора раньше, G1 должен расширять существующий
+- **Волна 2 начата:** T2.1 curriculum catalog pipeline перенесён в `app/modules/curriculum/stages/`
+  (brief→competencies→DAG→UP skeleton, core models, structured LLM prompt).
+- **Дальше:** T2.2 curriculum planner. Если нужен порт генератора раньше, G1 должен расширять существующий
   TM.4 engine, а не создавать второй оркестратор. Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -50,6 +52,7 @@ DoD: объём сопоставим с источником (ориентир ~
 - [x] **T0.1 / T0.2 / T0.3 / T0.4** — Волна 0 (код). Закрыть строгий DoD = `alembic upgrade head` на PG.
 - [x] **T1.1 / T1.2 / T1.3 / T1.4 / T1.5** — ядро.
 - [x] **TM.1 / TM.2 / TM.3 / TM.4** — методслой, профили и bridge engine→gate.
+- [x] **T2.1** — catalog intake stages: `brief -> competencies -> DAG -> UPSkeleton`.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
