@@ -30,9 +30,11 @@ workflow_state 160, flow_result 45, context_phase_executor 318, exceptions 74 + 
 generation_runtime, artifact_chain, domain_contracts, project_planning, project_seed_provider, workflow_profiles,
 workflow_state, context_phase_executor, agents/base/, agents/flow.py). Нет/пусто -> "LEGACY ОТСУТСТВУЕТ", СТОП.
 ШАГ 1 — прочитай источник целиком; AGENTS.md; docs/CONSOLIDATION_PLAN.md (про «4 слоя -> engine.py»).
-ШАГ 2 — СВЕРНИ оркестрацию в один engine.py (стадийный прогон + вызовы harness.augment/prepare/validate из
-app/core/methodology); контракты -> domain.py; вход модуля -> service.py. observability -> app/core/llm/observe
-(не дублируй). Базовый LLM-клиент НЕ дублируй — app/core/llm. Промпты -> app/core/llm/prompts/generator/.
+ШАГ 2 — РАСШИРЬ существующий app/modules/generator/engine.py из TM.4: он уже умеет stage runner +
+harness.augment/prepare/validate + rubric_json -> MethodologyGate. Не создавай второй dispatcher. СВЕРНИ
+legacy-оркестрацию в этот engine.py; контракты -> domain.py; вход модуля -> service.py. observability ->
+app/core/llm/observe (не дублируй). Базовый LLM-клиент НЕ дублируй — app/core/llm.
+Промпты -> app/core/llm/prompts/generator/.
 ШАГ 3 — тест: engine прогоняет фиктивную стадию, зовёт harness, возвращает результат (реальное поведение).
 ШАГ 4 — `wc -l` источника и engine.py; вывод теста; что свернул и почему.
 DoD: engine реально оркеструет стадии и дергает harness; ≤2000 строк (свёртка ожидаема); тест зелёный. Не брать следующую.

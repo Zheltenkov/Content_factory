@@ -7,8 +7,11 @@
 - **Волна 0 — код готов:** T0.1 каркас, T0.2 registry+плитки, T0.3 alembic-цепочка (12 ревизий из CG),
   T0.4 схема Справочника (013). Осталось закрыть строгий DoD: прогнать `alembic upgrade head` на живом PG
   (Codex-cloud до localhost не достучится — запускай ЛОКАЛЬНО; см. низ файла).
-- **Дальше:** T1.1+TM.1 (методслой) → `reference` первым портом-индикатором → TM.2/TM.3 (скиллы) →
-  generator (G1…) → checker. Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
+- **Волна 1 — core готова:** harness/rules, LLM core, unified models, MethodologyGate, config/thresholds.
+- **Волна M — methodology готова до TM.4:** TM.1 эталоны, TM.2 базовые скиллы, TM.3 kids/commerce,
+  TM.4 thin engine→harness→gate (`app/modules/generator/engine.py`).
+- **Дальше:** T2.1 curriculum pipeline или, если нужен порт генератора раньше, G1 должен расширять существующий
+  TM.4 engine, а не создавать второй оркестратор. Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
 1. **Одна задача = один прогон Codex.** Не «собери проект». После каждой — **пуш**, затем сверь `wc -l`
@@ -45,6 +48,8 @@ DoD: объём сопоставим с источником (ориентир ~
 ## Прогресс и готовые промпты
 
 - [x] **T0.1 / T0.2 / T0.3 / T0.4** — Волна 0 (код). Закрыть строгий DoD = `alembic upgrade head` на PG.
+- [x] **T1.1 / T1.2 / T1.3 / T1.4 / T1.5** — ядро.
+- [x] **TM.1 / TM.2 / TM.3 / TM.4** — методслой, профили и bridge engine→gate.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
@@ -88,10 +93,25 @@ docs/harness_ref/.../profiles/{kids,commerce} (каркас); docs/regulations/{
 DoD: harness резолвит kids (main/intensive/master_class) и commerce; producers_bound_to("generator.")==[]; тест.
 ```
 
+### TM.4 — harness -> engine -> gate
+```
+Реализуй TM.4 из docs/TASKS.md. Прочитай: AGENTS.md; docs/SKILLS_ARCHITECTURE.md §4,§6;
+docs/CONSOLIDATION_PLAN.md §4; app/core/methodology/{harness.py,gate/}.
+Создай или обнови тонкий интеграционный слой в app/modules/generator/engine.py:
+1. stage runner зовёт harness.prepare(stage, ctx) перед стадией;
+2. harness.augment(stage, ctx) отдаёт инструкции стадии;
+3. output стадии приводится к GeneratedDoc;
+4. harness.validate(stage, doc, ctx) собирает RuleIssue;
+5. RuleIssue сериализуются в rubric_json и передаются в MethodologyGate.review("evaluation", ctx).
+DoD: e2e-тест активного профиля прогоняет prepare/augment/validate; HARD issue становится critical в gate и
+поднимает human_review_required. Интеграционный слой <=300 строк. Не брать следующую.
+```
+
 ### generator (G1…G5) и checker (C1…C4)
 Полная разбивка на под-задачи с заполненными промптами и путями ver1 — в **`docs/GENERATOR_CHECKER_PORT.md`**.
-Брать строго по одной, начиная с G1 (оркестрация -> engine). checker — помни: в основном НЕ порт (rubric
-заменяется скиллами), типы промптов там разные.
+Брать строго по одной, начиная с G1 (оркестрация -> engine). После TM.4 engine уже существует как
+методологический bridge; G1 должен расширить его реальной legacy-оркестрацией и доменными контрактами, без второго
+dispatcher. checker — помни: в основном НЕ порт (rubric заменяется скиллами), типы промптов там разные.
 
 ### Волны 2 (УП), 6 (UI), 7 (петля)
 В `docs/TASKS.md`. Волна 2 атомарна; UI (W6) — отдельными задачами на panel.{html,js} модуля из
