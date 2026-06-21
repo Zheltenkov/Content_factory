@@ -39,6 +39,37 @@ def test_regression_pipeline_builds_catalog_dag_and_up_offline() -> None:
     assert result.profile_package().competencies == result.competencies
 
 
+def test_offline_intake_preserves_dense_backend_brief_semantics() -> None:
+    result = run_catalog_pipeline(
+        """
+        Программа для junior backend-разработчика на 12 недель, 8 часов в неделю.
+        Выпускник должен проектировать REST API, моделировать SQL-схему, писать SQL-запросы,
+        настраивать Docker окружение, CI/CD pipeline, автотесты pytest, логирование и мониторинг.
+        Нужно уметь работать с Git flow, code review, OpenAPI, PostgreSQL, очередями сообщений,
+        безопасной обработкой токенов, деплоем сервиса и диагностикой инцидентов.
+        Финальный проект: backend-сервис с REST API, БД, тестами, контейнеризацией и pipeline.
+        """
+    )
+
+    accepted = [item for item in result.competencies if item.atomicity == "atomic" and item.status == "accepted"]
+    accepted_names = {item.canonical_name for item in accepted}
+    bloom_levels = {item.bloom_level for item in accepted}
+
+    assert result.reports["atomize"]["non_skill_count"] >= 1
+    assert result.reports["atomize"]["split_count"] >= 15
+    assert result.dag_payload["acyclic"] is True
+    assert result.dag_payload["nodes"] >= 18
+    assert result.up.status == "built"
+    assert len(result.up.rows) >= 18
+    assert {"apply", "analyze", "create"} <= bloom_levels
+    assert "Проектирование REST API" in accepted_names
+    assert "Моделирование SQL-схемы" in accepted_names
+    assert "Написание SQL-запросов" in accepted_names
+    assert "Настройка CI/CD pipeline" in accepted_names
+    assert "Диагностика инцидентов" in accepted_names
+    assert not any("8 часов" in name for name in accepted_names)
+
+
 def test_brief_to_catalog_uses_core_structured_llm_client() -> None:
     payload = {
         "spec": {"role": "Data analyst", "domain": "Аналитика", "artifact_type": "program_brief"},

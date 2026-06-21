@@ -37,7 +37,7 @@ CSV_COLUMNS: tuple[tuple[str, str], ...] = (
 )
 CSV_HEADERS: dict[str, str] = dict(CSV_COLUMNS)
 
-CURRICULUM_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
+CSV_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     "block_name": ("тематический блок", "название всего блока (если делим на блоки)", ""),
     "block_goals": ("цели блока",),
     "order": ("№", "№ "),
@@ -347,7 +347,7 @@ def _read_csv_rows(text: str) -> list[list[str]]:
 
 def _field_columns(headers: list[str]) -> dict[str, int]:
     columns: dict[str, int] = {}
-    for field, aliases in CURRICULUM_COLUMN_ALIASES.items():
+    for field, aliases in CSV_COLUMN_ALIASES.items():
         if field.startswith("outcomes_") or field == "learning_outcomes":
             continue
         index = _resolve_column(headers, aliases, allow_blank_first=field == "block_name")
@@ -362,11 +362,11 @@ def _field_columns(headers: list[str]) -> dict[str, int]:
 def _outcome_columns(headers: list[str]) -> dict[str, int]:
     columns: dict[str, int] = {}
     for field in ("outcomes_know", "outcomes_can", "outcomes_skills"):
-        index = _resolve_column(headers, CURRICULUM_COLUMN_ALIASES[field])
+        index = _resolve_column(headers, CSV_COLUMN_ALIASES[field])
         if index is not None:
             columns[field] = index
 
-    generic = _resolve_columns(headers, CURRICULUM_COLUMN_ALIASES["learning_outcomes"])
+    generic = _resolve_columns(headers, CSV_COLUMN_ALIASES["learning_outcomes"])
     unused = [index for index in generic if index not in columns.values()]
     if len(unused) >= 3:
         columns.setdefault("outcomes_know", unused[0])

@@ -175,7 +175,7 @@ modules/checker/
 | `tests/test_regression_pipeline.py` (2 005) | `tests/curriculum/` | Приёмочный тест волны — адаптировать импорты |
 
 **Персистентность УП (закрывает требование №1):**
-- Новые таблицы (alembic): `curriculum_plan` (направление, версия, статус, автор, created/updated) и `curriculum_project` (FK→plan, order, block_name, title, description, learning_outcomes[], skills[], audience_level, required_tools[], sjm, workload_hours, group_size, platform_name, …) — колонки 1:1 с `CURRICULUM_COLUMN_ALIASES` из текущего `curriculum.py`.
+- Новые таблицы (alembic): `curriculum_plan` (направление, версия, статус, автор, created/updated) и `curriculum_project` (FK→plan, order, block_name, title, description, learning_outcomes[], skills[], audience_level, required_tools[], sjm, workload_hours, group_size, platform_name, …) — DB-контракт `CURRICULUM_ALIAS_FIELD_TO_COLUMN`; CSV-алиасы живут отдельно в `CSV_COLUMN_ALIASES`.
 - CRUD-роутер: `GET/POST/PUT/PATCH/DELETE /curriculum/plans[/{id}]`, `.../projects/{id}`. УП **редактируем** через panel.
 - `editor`-панель: каскад Направление→Блок→Проект (UI уже спроектирован в `CurriculumContext`), инлайн-правка ячеек, импорт CSV (через существующий парсер) как способ *первичного наполнения*, экспорт CSV из БД.
 - Старый `POST /curriculum/upload` (CSV→форма) сохраняется как «импорт в БД», а не как единственный путь.

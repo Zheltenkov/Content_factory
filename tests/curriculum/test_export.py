@@ -4,7 +4,8 @@ import csv
 import io
 
 from app.core.models import UPProject, UPSkeleton
-from app.modules.curriculum.export import CurriculumExportV1, CurriculumProjectExportV1, up_to_curriculum_export
+from app.modules.curriculum.export import CSV_COLUMN_ALIASES, CurriculumExportV1, CurriculumProjectExportV1, up_to_curriculum_export
+from app.modules.curriculum.repo import CURRICULUM_ALIAS_FIELD_TO_COLUMN
 
 
 def test_curriculum_export_json_csv_json_roundtrip_is_equivalent() -> None:
@@ -102,3 +103,10 @@ def test_up_skeleton_exports_through_curriculum_export_v1() -> None:
     assert restored.rows[0].title == "REST API"
     assert restored.rows[0].outcomes_know == ["Знает HTTP"]
     assert restored.rows[0].metadata["gitlab_link"] == "https://gitlab.example/api"
+
+
+def test_csv_and_db_alias_contracts_are_named_separately() -> None:
+    assert "outcomes_know" in CSV_COLUMN_ALIASES
+    assert "p2p_count" in CSV_COLUMN_ALIASES
+    assert "expert_notes" in CURRICULUM_ALIAS_FIELD_TO_COLUMN
+    assert "audience_level" in CURRICULUM_ALIAS_FIELD_TO_COLUMN
