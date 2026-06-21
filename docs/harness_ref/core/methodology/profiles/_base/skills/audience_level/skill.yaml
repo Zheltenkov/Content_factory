@@ -1,0 +1,8 @@
+id: audience_level
+title: Уровень аудитории
+source: "Регламент 3.1.1"
+hooks:
+  - at: pre.stage
+    stages: [curriculum.planner]
+severity: soft
+params: {assumed_known: basics}

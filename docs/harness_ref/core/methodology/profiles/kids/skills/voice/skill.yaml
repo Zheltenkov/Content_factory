@@ -1,0 +1,9 @@
+id: voice
+title: Tone of Voice (детское)
+source: "Регламент 3.2.4 (Дети)"
+hooks:
+  - at: prompt.augment
+    stages: [generator.title_annotation, generator.intro, generator.theory, generator.practice]
+severity: soft
+params: {formality: warm_mentor}
+instructions: instructions.md

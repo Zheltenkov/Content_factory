@@ -1,0 +1,53 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Python caches and tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node/build artifacts
+node_modules/
+dist/
+build/
+*.egg-info/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.codex/
+
+# Logs and local data stores
+*.log
+*.jsonl
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Generated project artifacts
+legacy/**/reports/
+legacy/**/output/
+legacy/**/uploads/
+legacy/**/test_tmp/
+legacy/**/tmp/
+legacy/**/.tmp/
+.ipynb_checkpoints/

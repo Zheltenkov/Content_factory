@@ -1,0 +1,4 @@
+id: _base
+title: Основа (базовый профиль)
+content_model: readme_linear
+terminology: {branch: ветка, curriculum: УП}

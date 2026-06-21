@@ -1,0 +1,9 @@
+id: assessments
+title: Система контроля
+source: "Регламент 3.1.3"
+hooks:
+  - at: post.validate
+    stages: [generator.evaluation]
+severity: hard
+applies_to: {artifact_family: [lesson]}
+params: {required: [entry, midterm, final]}

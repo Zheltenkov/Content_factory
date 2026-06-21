@@ -1,0 +1,23 @@
+id: kids
+title: Детское направление (Старт)
+extends: _base
+terminology: {branch: программа, curriculum: программа обучения}
+overrides: [voice]
+disables: [readme_structure]
+adds: [program_types, lesson_structure, mentor_assets, assessments, student_portrait]
+program_types:
+  main:
+    artifact_target: curriculum_plan
+    content_model: lesson_course
+    params: {assessments.required: [entry, midterm, final], lesson_structure.lesson_hours: [2, 4], lesson_structure.project_span: [2, 4]}
+  intensive:
+    artifact_target: curriculum_plan
+    content_model: lesson_course
+    params: {assessments.required: [final], lesson_structure.lesson_hours: [4], lesson_structure.project_span: [2, 5]}
+  master_class:
+    artifact_target: curriculum_plan
+    content_model: lesson_single
+    params: {lesson_structure.duration_minutes: 90}
+params:
+  audience_level.assumed_known: none
+  voice.formality: warm_mentor

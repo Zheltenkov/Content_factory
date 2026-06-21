@@ -1,0 +1,39 @@
+id: document_integrity
+title: Целостность документа
+source: "structural_criteria_v2 N.1-N.5"
+
+# Чисто ДЕТЕКТИВНЫЙ скилл: только post.validate, без prompt.augment.
+# Поэтому у него НЕТ instructions.md — это допустимый случай "только машинное правило" (§3 спека).
+hooks:
+  - on: post.validate
+    stages: [generator.evaluation, checker.evaluation]   # namespaced; работает и в генераторе, и в чекере
+
+severity: hard
+
+# Cross-artifact: целостность не зависит от каркаса. harness привязывает скилл, только если
+# активный artifact_family ∈ этого списка (фильтрация на стороне harness, не в check.py).
+applies_to:
+  artifact_family: [readme, lesson, guide]
+
+params:
+  # --- N.1 целостность таблиц ---
+  check_tables: true
+  # --- N.2 template bleed / дословные повторы ---
+  max_duplicate_block_ratio: 0.08      # доля символов в повторяющихся блоках
+  min_block_chars: 120                 # блоки короче не считаем за повтор
+  placeholder_markers: ["TODO", "FIXME", "XXX", "lorem ipsum", "ЗАПОЛНИ", "ВСТАВЬ",
+                        "ЗДЕСЬ ДОЛЖ", "ОБРАЗЕЦ ТЕКСТА", "PLACEHOLDER", "<...>", "ВАШ ТЕКСТ"]
+  # --- N.3 диаграмма <-> тема (эвристика, без семантической модели) ---
+  check_diagram_topic: true
+  diagram_fences: [mermaid, plantuml, dot, graphviz]
+  diagram_context_lines: 6             # в скольких строках выше искать заголовок/подпись
+  # --- N.4 оборванные фразы / несбалансированные кавычки ---
+  check_broken_text: true
+  max_dangling_reported: 3
+  # --- N.5 единый project-id ---
+  require_single_project_id: true
+  # узкий паттерн слага (префикс с цифрой + CamelCase), чтобы не ловить ENV_VARS/CONSTANTS.
+  # Конкретный проект может переопределить под свою схему именования.
+  project_id_pattern: '\b[A-Z]{1,4}\d{1,3}_[A-Z][A-Za-z0-9]+(?:_v[\d.]+)?\b'
+
+check: check.py

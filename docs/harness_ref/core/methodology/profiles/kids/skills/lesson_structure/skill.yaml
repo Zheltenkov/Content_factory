@@ -1,0 +1,11 @@
+id: lesson_structure
+title: Структура занятий
+source: "Регламент 3.1.3"
+hooks:
+  - at: prompt.augment
+    stages: [generator.theory, generator.practice]
+  - at: post.validate
+    stages: [generator.evaluation]
+severity: hard
+applies_to: {artifact_family: [lesson]}
+params: {lesson_hours: [2, 4], project_span: [2, 4], duration_minutes: null}

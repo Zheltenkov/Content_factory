@@ -1,0 +1,19 @@
+id: visual_quality
+title: Качество визуальных материалов
+source: "Регламент 3.2.5"
+hooks:
+  - at: prompt.augment
+    stages: [generator.theory, generator.practice]
+  - at: post.validate
+    stages: [generator.evaluation]
+severity: hard
+params:
+  min_resolution: [1200, 800]
+  min_long_side: 1000
+  min_dpi: 96
+  max_file_kb: 1024
+  optimal_file_kb: 500
+  formats: [png, jpg, jpeg, svg]
+  formats_conditional: [gif, webp]
+instructions: instructions.md
+check: check.py
