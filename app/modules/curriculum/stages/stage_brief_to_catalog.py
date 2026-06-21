@@ -108,7 +108,7 @@ def _offline_result(brief: str) -> BriefCatalogResult:
             )
         ],
         competencies=competencies,
-        coverage_audit=_coverage_audit(coverage_rows, fallback_areas=topics[:16]),
+        coverage_audit=_coverage_audit(coverage_rows, candidate_areas=topics[:16]),
     )
 
 
@@ -122,7 +122,7 @@ def _spec_from_brief(brief: str) -> dict[str, Any]:
         "seniority": _match_or_default(brief, r"\b(junior\+?|middle|senior|lead|начинающ[а-я]+|базов[а-я]+)\b", "не указан"),
         "domain": topics[0][:120] if topics else "Домен из брифа",
         "must_include_areas": topics[:16],
-        "must_include_areas_source": "explicit" if areas else "fallback",
+        "must_include_areas_source": "explicit" if areas else "topic_candidates",
         "sub_queries": [f"Навыки выпускника: {topic}" for topic in topics[:6]],
     }
 
@@ -210,9 +210,9 @@ def _group_for_area(area: str, spec: dict[str, Any]) -> str:
     return " ".join(words[:4]).strip(" .;:") or str(spec.get("domain") or "Общее")
 
 
-def _coverage_audit(rows: list[dict[str, Any]], *, fallback_areas: list[str]) -> dict[str, Any]:
+def _coverage_audit(rows: list[dict[str, Any]], *, candidate_areas: list[str]) -> dict[str, Any]:
     if not rows:
-        return {"areas": fallback_areas, "covered": 0, "mode": "offline", "rows": []}
+        return {"areas": candidate_areas, "covered": 0, "mode": "offline", "rows": []}
     covered = sum(1 for row in rows if row["status"] == "covered")
     partial = sum(1 for row in rows if row["status"] == "partial")
     uncovered = sum(1 for row in rows if row["status"] == "uncovered")

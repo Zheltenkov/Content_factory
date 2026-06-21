@@ -8,6 +8,7 @@ import yaml
 from app.core.models import Competency
 from app.modules.curriculum.stages import stage_atomize, stage_normalize
 from app.modules.curriculum.stages.pipeline import run_catalog_pipeline
+from app.modules.curriculum.stages.skill_names import skill_name_from_topic
 from app.modules.curriculum.stages.stage_brief_to_catalog import BriefCatalogResult, run as brief_to_catalog
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,6 +61,7 @@ def test_offline_intake_preserves_dense_backend_brief_semantics() -> None:
     accepted_names = {item.canonical_name for item in accepted}
     bloom_levels = {item.bloom_level for item in accepted}
 
+    assert result.spec["must_include_areas_source"] == "topic_candidates"
     assert result.reports["atomize"]["non_skill_count"] >= 1
     assert result.reports["atomize"]["split_count"] >= 15
     assert result.dag_payload["acyclic"] is True
@@ -112,6 +114,9 @@ def test_skill_name_rules_do_not_embed_backend_spotcheck_repairs() -> None:
     assert "fragment_repairs" not in payload
     assert "object_rewrites" not in payload
     assert "tech_terms" not in payload
+    project_rule = next(item for item in payload["action_prefixes"] if item["pattern"].startswith("^проектировать"))
+    assert project_rule["noun"] == "Проектирование"
+    assert skill_name_from_topic("проектировать OpenAPI") == "Проектирование OpenAPI"
 
 
 def test_brief_to_catalog_uses_core_structured_llm_client() -> None:
