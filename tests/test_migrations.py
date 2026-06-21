@@ -31,8 +31,8 @@ def _psycopg_url(url: str) -> str:
 def test_alembic_chain_points_to_current_head() -> None:
     script = ScriptDirectory.from_config(Config("alembic.ini"))
 
-    assert script.get_heads() == ["013"]
-    assert len(list(script.walk_revisions())) == 13
+    assert script.get_heads() == ["014"]
+    assert len(list(script.walk_revisions())) == 14
 
 
 def test_reference_catalog_revision_declares_key_tables() -> None:
@@ -46,6 +46,52 @@ def test_reference_catalog_revision_declares_key_tables() -> None:
         "ai_analysis_suggestion",
         "review_queue",
     } <= set(migration.CATALOG_TABLES)
+
+
+def test_curriculum_plan_revision_declares_alias_columns() -> None:
+    migration = import_module("migrations.versions.014_add_curriculum_plan_tables")
+
+    assert migration.CURRICULUM_ALIAS_FIELD_TO_COLUMN["order"] == "project_order"
+    assert set(migration.CURRICULUM_ALIAS_FIELD_TO_COLUMN) == {
+        "block_name",
+        "block_goals",
+        "order",
+        "title",
+        "description",
+        "expert_notes",
+        "learning_outcomes",
+        "skills",
+        "audience_level",
+        "required_tools",
+        "sjm",
+        "storytelling_type",
+        "format",
+        "additional_materials",
+        "group_size",
+        "workload_hours",
+        "workload_days",
+        "total_workload_days",
+        "xp",
+        "passing_threshold",
+        "required_software",
+        "platform_name",
+        "gitlab_link",
+    }
+    assert {
+        "block_name",
+        "block_goals",
+        "project_order",
+        "title",
+        "description",
+        "learning_outcomes",
+        "skills",
+        "required_tools",
+        "sjm",
+        "format",
+        "workload_hours",
+        "platform_name",
+        "gitlab_link",
+    } <= set(migration.CURRICULUM_PROJECT_COLUMNS)
 
 
 def test_database_url_connects_when_postgres_is_available() -> None:

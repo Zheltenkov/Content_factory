@@ -5,7 +5,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine
 
-from app.core.models import Competency
+from app.core.models import Competency, UPProject, UPSkeleton
 from app.modules.curriculum.repo import CurriculumCatalogRepo, create_catalog_schema
 
 
@@ -50,6 +50,51 @@ def test_catalog_repo_links_competency_indicators_and_review_queue() -> None:
     assert repo.set_competency_review_status(link.competency_id, accepted=True)["status"] == "accepted"
     assert repo.resolve_review_item(reviews[0]["id"], status="resolved", note="confirmed") is True
     assert repo.list_review_queue(status="resolved")[0]["resolution_note"] == "confirmed"
+
+
+def test_curriculum_plan_roundtrip_persists_projects() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    create_catalog_schema(engine)
+    repo = CurriculumCatalogRepo(engine)
+    up = UPSkeleton(
+        status="built",
+        title="Backend curriculum",
+        direction="Backend",
+        rows=[
+            UPProject(
+                block="API",
+                block_goal="Спроектировать сервис",
+                order=1,
+                title="REST API проект",
+                description="Собрать сервис с REST API.",
+                outcomes_know=["Знает HTTP"],
+                outcomes_can=["Проектирует endpoint"],
+                outcomes_skills=["Реализует API"],
+                competency_refs=[{"competency_id": "C1", "canonical_name": "REST API", "weight": 100, "role": "primary"}],
+                required_tools=["OpenAPI"],
+                required_software=["Python"],
+                materials="OpenAPI spec",
+                storytelling="Команда запускает API.",
+                format="individual",
+                group_size=1,
+                hours_astro=12,
+                metadata={"platform_name": "S21-BE-01", "gitlab_link": "https://gitlab.example/api", "xp": 120},
+            )
+        ],
+        metadata={"audience_level": "junior"},
+    )
+
+    saved = repo.save_curriculum_plan(up, source_policy="accepted_only", author_ref="pytest")
+    restored = repo.load_curriculum_plan(saved.plan_id)
+
+    assert saved.project_count == 1
+    assert restored is not None
+    assert restored.title == "Backend curriculum"
+    assert restored.rows[0].title == "REST API проект"
+    assert restored.rows[0].competency_refs[0].competency_id == "C1"
+    assert restored.rows[0].metadata["platform_name"] == "S21-BE-01"
+    assert repo.delete_curriculum_plan(saved.plan_id) is True
+    assert repo.load_curriculum_plan(saved.plan_id) is None
 
 
 def test_curriculum_catalog_sql_is_owned_by_repo_only() -> None:

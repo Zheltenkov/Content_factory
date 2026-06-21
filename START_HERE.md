@@ -12,8 +12,9 @@
   TM.4 thin engine→harness→gate (`app/modules/generator/engine.py`).
 - **Волна 2 начата:** T2.1 curriculum catalog pipeline перенесён в `app/modules/curriculum/stages/`,
   T2.2 spiral planner подключён к `stage_dag_to_up`, T2.3 repo-слой каталога перенесён в
-  `app/modules/curriculum/repo.py` (SQLAlchemy Core, PG-схема `013`).
-- **Дальше:** T2.4 таблицы УП (`curriculum_plan` + `curriculum_project` alembic). Если нужен порт генератора раньше, G1 должен расширять существующий
+  `app/modules/curriculum/repo.py`, T2.4 добавил PG-таблицы УП `curriculum_plan`/`curriculum_project`
+  и round-trip `UPSkeleton` через repo.
+- **Дальше:** T2.5 CRUD-роутер УП (`/curriculum/plans`, `/curriculum/projects/{id}`). Если нужен порт генератора раньше, G1 должен расширять существующий
   TM.4 engine, а не создавать второй оркестратор. Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -56,6 +57,7 @@ DoD: объём сопоставим с источником (ориентир ~
 - [x] **T2.1** — catalog intake stages: `brief -> competencies -> DAG -> UPSkeleton`.
 - [x] **T2.2** — spiral planner: artifact-first packing, hard-DAG order, Bruner/Harden/Hattie repeats.
 - [x] **T2.3** — curriculum catalog repo: CRUD skill/alias, resolver, competency links, review queue.
+- [x] **T2.4** — persistent UP tables: `curriculum_plan` + `curriculum_project`, repo round-trip.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```

@@ -18,7 +18,7 @@ from typing import Any, Iterable, Iterator, Literal
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection, Engine
 
-from app.core.models import Competency, CompetencyIndicator
+from app.core.models import Competency, CompetencyIndicator, UPProject, UPSkeleton
 
 CatalogStatus = Literal["active", "candidate", "deprecated"]
 ReviewSeverity = Literal["info", "warning", "error"]
@@ -48,6 +48,32 @@ DIMENSION_TITLES = {
     "proficiency": "Владеет",
     "unspecified": "Не указано",
 }
+CURRICULUM_ALIAS_FIELD_TO_COLUMN = {
+    "block_name": "block_name",
+    "block_goals": "block_goals",
+    "order": "project_order",
+    "title": "title",
+    "description": "description",
+    "expert_notes": "expert_notes",
+    "learning_outcomes": "learning_outcomes",
+    "skills": "skills",
+    "audience_level": "audience_level",
+    "required_tools": "required_tools",
+    "sjm": "sjm",
+    "storytelling_type": "storytelling_type",
+    "format": "format",
+    "additional_materials": "additional_materials",
+    "group_size": "group_size",
+    "workload_hours": "workload_hours",
+    "workload_days": "workload_days",
+    "total_workload_days": "total_workload_days",
+    "xp": "xp",
+    "passing_threshold": "passing_threshold",
+    "required_software": "required_software",
+    "platform_name": "platform_name",
+    "gitlab_link": "gitlab_link",
+}
+CURRICULUM_PROJECT_COLUMNS = tuple(CURRICULUM_ALIAS_FIELD_TO_COLUMN.values())
 
 metadata = sa.MetaData()
 
@@ -221,6 +247,74 @@ REVIEW_QUEUE = sa.Table(
     sa.Column("updated_at", sa.DateTime()),
     sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
 )
+CURRICULUM_PLAN = sa.Table(
+    "curriculum_plan",
+    metadata,
+    sa.Column("id", sa.Integer(), primary_key=True),
+    sa.Column("profile_id", sa.Integer(), sa.ForeignKey("profile.id", ondelete="SET NULL")),
+    sa.Column("source_policy", sa.Text(), nullable=False, server_default="accepted_only"),
+    sa.Column("status", sa.Text(), nullable=False, server_default="draft"),
+    sa.Column("title", sa.Text(), nullable=False),
+    sa.Column("direction", sa.Text(), nullable=False, server_default=""),
+    sa.Column("version", sa.Text(), nullable=False, server_default="v1"),
+    sa.Column("author_ref", sa.Text()),
+    sa.Column("total_blocks", sa.Integer(), nullable=False, server_default="0"),
+    sa.Column("total_projects", sa.Integer(), nullable=False, server_default="0"),
+    sa.Column("total_hours", sa.Float(), nullable=False, server_default="0"),
+    sa.Column("metadata_json", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
+    sa.Column("payload_json", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
+    sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.CheckConstraint("status IN ('built', 'deferred', 'draft', 'invalid', 'archived')", name="ck_curriculum_plan_status"),
+)
+CURRICULUM_PROJECT = sa.Table(
+    "curriculum_project",
+    metadata,
+    sa.Column("id", sa.Integer(), primary_key=True),
+    sa.Column("plan_id", sa.Integer(), sa.ForeignKey("curriculum_plan.id", ondelete="CASCADE"), nullable=False),
+    sa.Column("row_number", sa.Integer(), nullable=False),
+    sa.Column("block_index", sa.Integer(), nullable=False, server_default="0"),
+    sa.Column("project_index_in_block", sa.Integer(), nullable=False, server_default="0"),
+    sa.Column("block_name", sa.Text()),
+    sa.Column("block_goals", sa.Text()),
+    sa.Column("project_order", sa.Integer(), nullable=False),
+    sa.Column("title", sa.Text(), nullable=False),
+    sa.Column("description", sa.Text()),
+    sa.Column("expert_notes", sa.Text()),
+    sa.Column("learning_outcomes", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("skills", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("audience_level", sa.Text()),
+    sa.Column("required_tools", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("sjm", sa.Text()),
+    sa.Column("storytelling_type", sa.Text()),
+    sa.Column("format", sa.Text(), nullable=False, server_default="individual"),
+    sa.Column("additional_materials", sa.Text()),
+    sa.Column("group_size", sa.Integer(), nullable=False, server_default="1"),
+    sa.Column("workload_hours", sa.Float(), nullable=False, server_default="0"),
+    sa.Column("workload_days", sa.Float()),
+    sa.Column("total_workload_days", sa.Float()),
+    sa.Column("xp", sa.Integer()),
+    sa.Column("passing_threshold", sa.Float()),
+    sa.Column("required_software", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("platform_name", sa.Text()),
+    sa.Column("gitlab_link", sa.Text()),
+    sa.Column("outcomes_know", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("outcomes_can", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("outcomes_skills", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("competency_refs", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("artifacts_json", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("metadata_json", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
+    sa.Column("payload_json", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
+    sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.CheckConstraint("project_order > 0", name="ck_curriculum_project_order_positive"),
+    sa.CheckConstraint("group_size > 0", name="ck_curriculum_project_group_positive"),
+    sa.UniqueConstraint("plan_id", "row_number", name="uq_curriculum_project_plan_row"),
+)
+sa.Index("idx_curriculum_plan_profile_status", CURRICULUM_PLAN.c.profile_id, CURRICULUM_PLAN.c.status)
+sa.Index("idx_curriculum_plan_updated", CURRICULUM_PLAN.c.updated_at)
+sa.Index("idx_curriculum_project_plan_order", CURRICULUM_PROJECT.c.plan_id, CURRICULUM_PROJECT.c.project_order)
+sa.Index("idx_curriculum_project_block", CURRICULUM_PROJECT.c.plan_id, CURRICULUM_PROJECT.c.block_name, CURRICULUM_PROJECT.c.project_order)
 
 
 @dataclass(frozen=True)
@@ -254,6 +348,12 @@ class CompetencyLinkResult:
     needs_methodologist_review: bool = False
     created_review: bool = False
     created_indicator_rows: int = 0
+
+
+@dataclass(frozen=True)
+class CurriculumPlanSaveResult:
+    plan_id: int
+    project_count: int
 
 
 def create_catalog_schema(bind: Engine | Connection) -> None:
@@ -559,6 +659,86 @@ class CurriculumCatalogRepo:
             )
             return result.rowcount > 0
 
+    def save_curriculum_plan(
+        self,
+        up: UPSkeleton,
+        *,
+        profile_id: int | None = None,
+        source_policy: str = "accepted_only",
+        author_ref: str | None = None,
+    ) -> CurriculumPlanSaveResult:
+        payload = up.model_dump(mode="json")
+        with self._connect() as con:
+            now = datetime.now(UTC)
+            plan_id = _insert_id(
+                con,
+                CURRICULUM_PLAN.insert().values(
+                    profile_id=profile_id,
+                    source_policy=source_policy,
+                    status=up.status,
+                    title=up.title,
+                    direction=up.direction,
+                    version=up.version,
+                    author_ref=author_ref,
+                    total_blocks=len(up.blocks),
+                    total_projects=len(up.rows),
+                    total_hours=sum(project.hours_astro for project in up.rows),
+                    metadata_json=up.metadata,
+                    payload_json=payload,
+                    updated_at=now,
+                ),
+            )
+            block_indexes: dict[str, int] = {}
+            block_counts: dict[str, int] = {}
+            cumulative_days = 0.0
+            for row_number, project in enumerate(sorted(up.rows, key=lambda item: item.order), start=1):
+                block_name = project.block or "Без блока"
+                block_indexes.setdefault(block_name, len(block_indexes) + 1)
+                block_counts[block_name] = block_counts.get(block_name, 0) + 1
+                workload_days = _optional_float(project.metadata.get("workload_days"))
+                if workload_days is not None:
+                    cumulative_days += workload_days
+                con.execute(
+                    CURRICULUM_PROJECT.insert().values(
+                        **_project_values(
+                            plan_id=plan_id,
+                            row_number=row_number,
+                            block_index=block_indexes[block_name],
+                            project_index_in_block=block_counts[block_name],
+                            project=project,
+                            total_workload_days=cumulative_days if workload_days is not None else _optional_float(project.metadata.get("total_workload_days")),
+                        )
+                    )
+                )
+            return CurriculumPlanSaveResult(plan_id=plan_id, project_count=len(up.rows))
+
+    def load_curriculum_plan(self, plan_id: int) -> UPSkeleton | None:
+        with self._connect() as con:
+            plan = con.execute(CURRICULUM_PLAN.select().where(CURRICULUM_PLAN.c.id == plan_id)).mappings().first()
+            if plan is None:
+                return None
+            rows = con.execute(
+                CURRICULUM_PROJECT.select()
+                .where(CURRICULUM_PROJECT.c.plan_id == plan_id)
+                .order_by(CURRICULUM_PROJECT.c.row_number, CURRICULUM_PROJECT.c.id)
+            ).mappings().all()
+            projects = [_project_from_row(row) for row in rows]
+            metadata = dict(_json_object(plan["metadata_json"]))
+            metadata.update({"plan_id": int(plan["id"]), "source_policy": plan["source_policy"]})
+            return UPSkeleton(
+                status=plan["status"],
+                title=plan["title"],
+                direction=plan["direction"] or "",
+                version=plan["version"] or "v1",
+                rows=projects,
+                metadata=metadata,
+            )
+
+    def delete_curriculum_plan(self, plan_id: int) -> bool:
+        with self._connect() as con:
+            result = con.execute(CURRICULUM_PLAN.delete().where(CURRICULUM_PLAN.c.id == plan_id))
+            return result.rowcount > 0
+
     def ensure_dimensions(self) -> None:
         with self._connect() as con:
             for code, title in DIMENSION_TITLES.items():
@@ -842,6 +1022,129 @@ def _with_resolution(item: Competency, skill: CatalogSkill, resolution: str, sco
         aliases=list(dict.fromkeys([item.canonical_name, *item.aliases, *skill.aliases])),
     )
     return Competency.model_validate(payload)
+
+
+def _project_values(
+    *,
+    plan_id: int,
+    row_number: int,
+    block_index: int,
+    project_index_in_block: int,
+    project: UPProject,
+    total_workload_days: float | None,
+) -> dict[str, object]:
+    metadata_payload = project.metadata
+    competency_refs = [ref.model_dump(mode="json") for ref in project.competency_refs]
+    artifacts = [artifact.model_dump(mode="json") for artifact in project.artifacts]
+    return {
+        "plan_id": plan_id,
+        "row_number": row_number,
+        "block_index": block_index,
+        "project_index_in_block": project_index_in_block,
+        "block_name": project.block,
+        "block_goals": project.block_goal,
+        "project_order": project.order,
+        "title": project.title,
+        "description": project.description,
+        "expert_notes": metadata_payload.get("expert_notes"),
+        "learning_outcomes": project.learning_outcomes,
+        "skills": [ref.canonical_name for ref in project.competency_refs],
+        "audience_level": metadata_payload.get("audience_level"),
+        "required_tools": project.required_tools,
+        "sjm": project.storytelling,
+        "storytelling_type": metadata_payload.get("storytelling_type"),
+        "format": project.format,
+        "additional_materials": project.materials,
+        "group_size": project.group_size,
+        "workload_hours": project.hours_astro,
+        "workload_days": _optional_float(metadata_payload.get("workload_days")),
+        "total_workload_days": total_workload_days,
+        "xp": _optional_int(metadata_payload.get("xp")),
+        "passing_threshold": _optional_float(metadata_payload.get("passing_threshold")),
+        "required_software": project.required_software,
+        "platform_name": metadata_payload.get("platform_name"),
+        "gitlab_link": metadata_payload.get("gitlab_link"),
+        "outcomes_know": project.outcomes_know,
+        "outcomes_can": project.outcomes_can,
+        "outcomes_skills": project.outcomes_skills,
+        "competency_refs": competency_refs,
+        "artifacts_json": artifacts,
+        "metadata_json": metadata_payload,
+        "payload_json": project.model_dump(mode="json"),
+        "updated_at": datetime.now(UTC),
+    }
+
+
+def _project_from_row(row: sa.RowMapping) -> UPProject:
+    payload = _json_object(row["payload_json"])
+    if payload:
+        return UPProject.model_validate(payload)
+    return UPProject(
+        block=row["block_name"] or "",
+        block_goal=row["block_goals"] or "",
+        order=int(row["project_order"]),
+        title=row["title"],
+        description=row["description"] or "",
+        outcomes_know=_json_text_list(row["outcomes_know"]),
+        outcomes_can=_json_text_list(row["outcomes_can"]),
+        outcomes_skills=_json_text_list(row["outcomes_skills"]),
+        competency_refs=_json_list(row["competency_refs"]),
+        required_tools=_json_text_list(row["required_tools"]),
+        required_software=_json_text_list(row["required_software"]),
+        materials=row["additional_materials"] or "",
+        storytelling=row["sjm"] or "",
+        format=row["format"] or "individual",
+        group_size=int(row["group_size"] or 1),
+        hours_astro=float(row["workload_hours"] or 0.0),
+        artifacts=_json_list(row["artifacts_json"]),
+        metadata=_json_object(row["metadata_json"]),
+    )
+
+
+def _json_object(value: object) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            decoded = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return dict(decoded) if isinstance(decoded, dict) else {}
+    return {}
+
+
+def _json_list(value: object) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            decoded = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+        return decoded if isinstance(decoded, list) else []
+    return []
+
+
+def _json_text_list(value: object) -> list[str]:
+    return [str(item) for item in _json_list(value) if str(item).strip()]
+
+
+def _optional_float(value: object) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_int(value: object) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _best_fuzzy_match(
