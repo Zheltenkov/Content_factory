@@ -14,8 +14,9 @@
   T2.2 spiral planner подключён к `stage_dag_to_up`, T2.3 repo-слой каталога перенесён в
   `app/modules/curriculum/repo.py`, T2.4 добавил PG-таблицы УП `curriculum_plan`/`curriculum_project`
   и round-trip `UPSkeleton` через repo, T2.5 добавил CRUD API, T2.6 добавил editor-панель УП,
-  cascade API и CSV import/export.
-- **Дальше:** T2.7 export.py (`UPSkeleton`/`CurriculumExportV1`, JSON↔CSV round-trip). Если нужен порт генератора раньше, G1 должен расширять существующий
+  cascade API и CSV import/export, T2.7 добавил `curriculum/export.py`: `CurriculumExportV1`
+  и 22-колоночный CSV как производное от JSON.
+- **Дальше:** T2.8 генератор тянет УП из БД (`repo.get_context(plan_id, project_order)->CurriculumContext`). Если нужен порт генератора раньше, G1 должен расширять существующий
   TM.4 engine, а не создавать второй оркестратор. Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -61,6 +62,7 @@ DoD: объём сопоставим с источником (ориентир ~
 - [x] **T2.4** — persistent UP tables: `curriculum_plan` + `curriculum_project`, repo round-trip.
 - [x] **T2.5** — CRUD API for persistent UP plans/projects.
 - [x] **T2.6** — DB-backed curriculum editor panel with cascade, inline edit, CSV import/export.
+- [x] **T2.7** — `CurriculumExportV1` JSON export plus 22-column CSV projection and JSON↔CSV round-trip.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
