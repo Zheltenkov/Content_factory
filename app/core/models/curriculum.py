@@ -36,6 +36,55 @@ class ProjectSummary(BaseModel):
     competency_refs: list[CompetencyRef] = Field(default_factory=list)
 
 
+class CurriculumContext(BaseModel):
+    """Generation context built from a persisted curriculum plan."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    plan_id: int | None = None
+    plan_title: str = ""
+    direction: str = ""
+    block_name: str
+    block_goals: list[str] = Field(default_factory=list)
+    current_project_order: int
+    current_project_title: str = ""
+    current_project_description: str = ""
+    current_project_learning_outcomes: list[str] = Field(default_factory=list)
+    current_project_skills: list[str] = Field(default_factory=list)
+    current_project_competency_refs: list[CompetencyRef] = Field(default_factory=list)
+    current_project_audience_level: str | None = None
+    current_project_required_tools: list[str] = Field(default_factory=list)
+    current_project_required_software: list[str] = Field(default_factory=list)
+    current_project_format: ProjectFormat = "individual"
+    current_project_group_size: int = 1
+    current_project_workload_hours: float = 0.0
+    current_project_platform_name: str | None = None
+    current_project_gitlab_link: str | None = None
+    previous_projects: list[ProjectSummary] = Field(default_factory=list)
+    next_projects: list[ProjectSummary] = Field(default_factory=list)
+    all_block_learning_outcomes: list[str] = Field(default_factory=list)
+    previous_block_projects: list[ProjectSummary] = Field(default_factory=list)
+    next_block_projects: list[ProjectSummary] = Field(default_factory=list)
+    storytelling_type: str = "sjm"
+    sjm_context: str | None = None
+    expert_development_notes: str | None = None
+    additional_materials: str | None = None
+
+    def current_project_payload(self) -> dict[str, Any]:
+        """Compact project dict consumed by methodology producers and generator stages."""
+        return {
+            "id": self.current_project_platform_name or self.current_project_title,
+            "title": self.current_project_title,
+            "description": self.current_project_description,
+            "learning_outcomes": self.current_project_learning_outcomes,
+            "skills": self.current_project_skills,
+            "competency_refs": [ref.model_dump(mode="json") for ref in self.current_project_competency_refs],
+            "workload_hours": self.current_project_workload_hours,
+            "format": self.current_project_format,
+            "block_name": self.block_name,
+        }
+
+
 class UPProject(BaseModel):
     """One row/project in a curriculum skeleton."""
 
@@ -161,3 +210,65 @@ class UPSkeleton(BaseModel):
             for ref in project.competency_refs:
                 seen.setdefault(ref.competency_id, None)
         return list(seen)
+
+    def build_context(
+        self,
+        project_order: int,
+        *,
+        block_name: str | None = None,
+        cross_block_depth: int = 2,
+        plan_id: int | None = None,
+    ) -> CurriculumContext | None:
+        """Build generator context for a project without reparsing curriculum CSV."""
+        for block_index, block in enumerate(self.blocks):
+            if block_name and block.name != block_name:
+                continue
+            projects = sorted(block.projects, key=lambda item: item.order)
+            for project_index, project in enumerate(projects):
+                if project.order != project_order:
+                    continue
+                return CurriculumContext(
+                    plan_id=plan_id,
+                    plan_title=self.title,
+                    direction=self.direction,
+                    block_name=block.name,
+                    block_goals=block.goals,
+                    current_project_order=project.order,
+                    current_project_title=project.title,
+                    current_project_description=project.description,
+                    current_project_learning_outcomes=project.learning_outcomes,
+                    current_project_skills=[ref.canonical_name for ref in project.competency_refs],
+                    current_project_competency_refs=project.competency_refs,
+                    current_project_audience_level=_metadata_text(project, "audience_level"),
+                    current_project_required_tools=project.required_tools,
+                    current_project_required_software=project.required_software,
+                    current_project_format=project.format,
+                    current_project_group_size=project.group_size,
+                    current_project_workload_hours=project.hours_astro,
+                    current_project_platform_name=_metadata_text(project, "platform_name"),
+                    current_project_gitlab_link=_metadata_text(project, "gitlab_link"),
+                    previous_projects=[item.to_summary() for item in projects[:project_index]],
+                    next_projects=[item.to_summary() for item in projects[project_index + 1 :]],
+                    all_block_learning_outcomes=block.all_learning_outcomes(),
+                    previous_block_projects=_cross_block_projects(self.blocks, block_index - 1, -cross_block_depth),
+                    next_block_projects=_cross_block_projects(self.blocks, block_index + 1, cross_block_depth),
+                    storytelling_type=_metadata_text(project, "storytelling_type") or "sjm",
+                    sjm_context=project.storytelling or None,
+                    expert_development_notes=_metadata_text(project, "expert_notes"),
+                    additional_materials=project.materials or None,
+                )
+        return None
+
+
+def _metadata_text(project: UPProject, key: str) -> str | None:
+    value = project.metadata.get(key)
+    text = str(value).strip() if value is not None else ""
+    return text or None
+
+
+def _cross_block_projects(blocks: list[UPBlock], index: int, depth: int) -> list[ProjectSummary]:
+    if index < 0 or index >= len(blocks) or depth == 0:
+        return []
+    projects = sorted(blocks[index].projects, key=lambda item: item.order)
+    selected = projects[:depth] if depth > 0 else projects[depth:]
+    return [project.to_summary() for project in selected]

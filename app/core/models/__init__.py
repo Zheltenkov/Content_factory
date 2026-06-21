@@ -11,7 +11,7 @@ from app.core.models.competency import (
     EvidenceSource,
 )
 from app.core.models.context import MethodologyContext, ProfilePackage
-from app.core.models.curriculum import ProjectSummary, UPBlock, UPProject, UPSkeleton
+from app.core.models.curriculum import CurriculumContext, ProjectSummary, UPBlock, UPProject, UPSkeleton
 from app.core.models.methodology import DocImage, GeneratedDoc, RuleIssue, Severity
 
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "CompetencyEdge",
     "CompetencyIndicator",
     "CompetencyRef",
+    "CurriculumContext",
     "DocImage",
     "EvidenceSource",
     "GeneratedDoc",

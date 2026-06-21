@@ -20,7 +20,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Connection, Engine
 
 from app.core.config import get_settings
-from app.core.models import Competency, CompetencyIndicator, UPProject, UPSkeleton
+from app.core.models import Competency, CompetencyIndicator, CurriculumContext, UPProject, UPSkeleton
 
 CatalogStatus = Literal["active", "candidate", "deprecated"]
 ReviewSeverity = Literal["info", "warning", "error"]
@@ -786,6 +786,24 @@ class CurriculumCatalogRepo:
                 rows=projects,
                 metadata=metadata,
             )
+
+    def get_context(
+        self,
+        plan_id: int,
+        project_order: int,
+        *,
+        block_name: str | None = None,
+        cross_block_depth: int = 2,
+    ) -> CurriculumContext | None:
+        plan = self.load_curriculum_plan(plan_id)
+        if plan is None:
+            return None
+        return plan.build_context(
+            project_order,
+            block_name=block_name,
+            cross_block_depth=cross_block_depth,
+            plan_id=plan_id,
+        )
 
     def replace_curriculum_plan(
         self,

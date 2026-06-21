@@ -97,6 +97,34 @@ def test_curriculum_plan_roundtrip_persists_projects() -> None:
     assert repo.load_curriculum_plan(saved.plan_id) is None
 
 
+def test_curriculum_repo_get_context_builds_neighbor_context_from_db() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    create_catalog_schema(engine)
+    repo = CurriculumCatalogRepo(engine)
+    up = UPSkeleton(
+        status="built",
+        title="Backend curriculum",
+        direction="Backend",
+        rows=[
+            _project(1, "HTTP intro", block="API"),
+            _project(2, "REST API", block="API", platform_name="BE02_REST"),
+            _project(3, "Docker deploy", block="Deploy"),
+        ],
+    )
+
+    saved = repo.save_curriculum_plan(up)
+    context = repo.get_context(saved.plan_id, 2)
+
+    assert context is not None
+    assert context.plan_id == saved.plan_id
+    assert context.block_name == "API"
+    assert context.current_project_title == "REST API"
+    assert context.previous_projects[0].title == "HTTP intro"
+    assert context.next_projects == []
+    assert context.next_block_projects[0].title == "Docker deploy"
+    assert context.current_project_platform_name == "BE02_REST"
+
+
 def test_curriculum_catalog_sql_is_owned_by_repo_only() -> None:
     root = Path("app/modules/curriculum")
     forbidden = re.compile(
@@ -127,4 +155,24 @@ def _competency(tmp_id: str, name: str, *, group: str = "Data", bloom: str = "ap
         atomicity="atomic",
         resolution="new",
         status="accepted",
+    )
+
+
+def _project(order: int, title: str, *, block: str, platform_name: str | None = None) -> UPProject:
+    return UPProject(
+        block=block,
+        block_goal=f"Цель блока {block}",
+        order=order,
+        title=title,
+        description=f"{title}: учебный проект.",
+        outcomes_know=[f"Знает тему {title}"],
+        outcomes_can=[f"Выполняет {title}"],
+        outcomes_skills=[f"Применяет {title}"],
+        competency_refs=[{"competency_id": f"C{order}", "canonical_name": title, "weight": 100, "role": "primary"}],
+        required_tools=["Git"],
+        required_software=["OpenAPI"],
+        materials="materials/context.md",
+        storytelling="Команда проектирует сервис.",
+        hours_astro=8,
+        metadata={"platform_name": platform_name or f"BE{order:02d}"},
     )

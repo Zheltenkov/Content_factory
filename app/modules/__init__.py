@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.core.registry import ModuleManifest, Tile
 from app.modules.curriculum.router import router as curriculum_router
+from app.modules.generator.router import router as generator_router
 
 
 def _empty_module(module_id: str, title: str, icon: str, subtitle: str) -> ModuleManifest:
@@ -16,7 +17,14 @@ def _empty_module(module_id: str, title: str, icon: str, subtitle: str) -> Modul
 
 
 BUILTIN_MODULES = (
-    _empty_module("generator", "Генератор", "wand", "Генерация учебных материалов"),
+    ModuleManifest(
+        id="generator",
+        title="Генератор",
+        icon="wand",
+        router=generator_router,
+        ui_panel="generator/panel.html",
+        dashboard_tile=Tile(action="goToGenerator", subtitle="Генерация учебных материалов"),
+    ),
     _empty_module("checker", "Проверка", "check-circle", "Структурная и дидактическая оценка"),
     _empty_module("translator", "Переводчик", "languages", "Перевод документов и видео"),
     ModuleManifest(
