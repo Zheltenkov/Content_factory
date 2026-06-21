@@ -5,7 +5,7 @@
 
 ## Где мы сейчас
 - **Волна 0 — код готов:** T0.1 каркас, T0.2 registry+плитки, T0.3 alembic-цепочка (12 ревизий из CG),
-  T0.4 схема Справочника (013). Осталось закрыть строгий DoD: прогнать `alembic upgrade head` на живом PG
+  T0.4 схема Справочника (013) + таблицы УП (014). Осталось закрыть строгий DoD: прогнать `alembic upgrade head` на живом PG
   (Codex-cloud до localhost не достучится — запускай ЛОКАЛЬНО; см. низ файла).
 - **Волна 1 — core готова:** harness/rules, LLM core, unified models, MethodologyGate, config/thresholds.
 - **Волна M — methodology готова до TM.4:** TM.1 эталоны, TM.2 базовые скиллы, TM.3 kids/commerce,
@@ -17,8 +17,9 @@
   cascade API и CSV import/export, T2.7 добавил `curriculum/export.py`: `CurriculumExportV1`
   и 22-колоночный CSV как производное от JSON, T2.8 добавил DB-backed `CurriculumContext`
   (`repo.get_context(plan_id, project_order)`) и generator endpoint `/generator/runs/from-curriculum`.
-- **Дальше:** W3–4/G1 — реальный порт generator orchestration поверх существующего DB-context. G1 должен расширять существующий
-  TM.4 engine, а не создавать второй оркестратор. Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
+- **W3–4 начата:** G1 orchestration spine перенесён в существующий `app/modules/generator/engine.py`
+  (`domain.py` contracts, workflow checkpoints, skip/conditions, LLM trace hook, gate bridge). Дальше — **G2 head**.
+  Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
 1. **Одна задача = один прогон Codex.** Не «собери проект». После каждой — **пуш**, затем сверь `wc -l`
@@ -65,6 +66,8 @@ DoD: объём сопоставим с источником (ориентир ~
 - [x] **T2.6** — DB-backed curriculum editor panel with cascade, inline edit, CSV import/export.
 - [x] **T2.7** — `CurriculumExportV1` JSON export plus 22-column CSV projection and JSON↔CSV round-trip.
 - [x] **T2.8** — generator reads persisted UP context from DB via `repo.get_context(plan_id, project_order)`.
+- [x] **G1** — generator orchestration spine: stage contracts, workflow snapshots/checkpoints, skip conditions,
+  LLM observability hook, harness/gate bridge in the existing engine.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
@@ -124,9 +127,9 @@ DoD: e2e-тест активного профиля прогоняет prepare/a
 
 ### generator (G1…G5) и checker (C1…C4)
 Полная разбивка на под-задачи с заполненными промптами и путями ver1 — в **`docs/GENERATOR_CHECKER_PORT.md`**.
-Брать строго по одной, начиная с G1 (оркестрация -> engine). После TM.4 engine уже существует как
-методологический bridge; G1 должен расширить его реальной legacy-оркестрацией и доменными контрактами, без второго
-dispatcher. checker — помни: в основном НЕ порт (rubric заменяется скиллами), типы промптов там разные.
+Брать строго по одной. **Следующая: G2 head** (`title_annotation`, `intro_rules`, `context_analysis`,
+`intent_mapper`, `task_planner`, `structure_phase_executor`) поверх G1 engine. checker — помни: в основном НЕ порт
+(rubric заменяется скиллами), типы промптов там разные.
 
 ### Волны 2 (УП), 6 (UI), 7 (петля)
 В `docs/TASKS.md`. Волна 2 атомарна; UI (W6) — отдельными задачами на panel.{html,js} модуля из
@@ -141,5 +144,5 @@ dispatcher. checker — помни: в основном НЕ порт (rubric з
 docker run --name cf-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=content_factory -p 5432:5432 -d postgres:16
 ```
 В `.env`: `DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/content_factory`
-Затем из корня: `alembic upgrade head` && `alembic current` (= 013). Без Docker — бесплатный Neon/Supabase,
+Затем из корня: `alembic upgrade head` && `alembic current` (= 014). Без Docker — бесплатный Neon/Supabase,
 строку подключения в `.env`. После успешного upgrade + проверки таблиц Волна 0 закрыта строго по DoD.

@@ -55,8 +55,19 @@ class GeneratorService:
         result = engine.run(
             [
                 EngineStage("curriculum.planner", lambda _ctx, _augment: {}),
-                EngineStage("generator.finalize", lambda ctx, _augment: _document_from_context(context, ctx, template_blocks)),
-                EngineStage("generator.evaluation", lambda ctx, _augment: ctx["generated_doc"]),
+                EngineStage(
+                    "generator.finalize",
+                    lambda ctx, _augment: _document_from_context(context, ctx, template_blocks),
+                    node_id="finalize",
+                    outputs=("generated_doc", "markdown"),
+                ),
+                EngineStage(
+                    "generator.evaluation",
+                    lambda ctx, _augment: ctx["generated_doc"],
+                    node_id="evaluation",
+                    inputs=("generated_doc", "markdown"),
+                    gate_stage="evaluation",
+                ),
             ],
             _engine_context(context),
         )
