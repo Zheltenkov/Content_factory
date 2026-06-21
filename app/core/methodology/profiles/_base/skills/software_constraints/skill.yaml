@@ -1,0 +1,21 @@
+id: software_constraints
+title: Ограничения по ПО и библиотекам
+source: "Регламент 3.1.2"
+hooks:
+  - at: prompt.augment
+    stages: [generator.intro]
+  - at: post.validate
+    stages: [generator.evaluation]
+severity: hard
+params:
+  software_terms: [ПО, софт, библиотека, пакет, инструмент, SDK, CLI, Docker, Python, Node.js, PostgreSQL]
+  version_patterns:
+    - "\\b\\d+\\.\\d+(?:\\.\\d+)?\\b"
+    - "\\b(version|v|версия)\\s*[:=]?\\s*\\d+"
+  hard_patterns:
+    piracy: ["пират", "crack", "keygen", "активатор", "обход лицензии", "торрент", "nulled"]
+    unofficial: ["неофициальн", "скачайте с форума", "с форума", "форум", "зеркало", "файлообменник"]
+    russia_unavailable: ["недоступно в россии", "не работает в россии", "только через vpn", "vpn обязателен", "заблокировано в рф"]
+  required_markers: ["официаль", "доступн", "лиценз"]
+instructions: instructions.md
+check: check.py

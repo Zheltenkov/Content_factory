@@ -1,0 +1,31 @@
+id: workload_planning
+title: Трудоёмкость и проверки проекта
+source: "Регламент 3.1.3"
+hooks:
+  - at: pre.stage
+    stages: [curriculum.planner]
+requires: [curriculum.projects]
+produces: [curriculum.workload_plan, curriculum.workload_issues]
+severity: soft
+params:
+  id_fields: [id, project_id, title, name]
+  hours_fields: [workload_hours, human_hours, hours]
+  calendar_days_fields: [calendar_days, duration_days, days]
+  xp_fields: [xp, xp_reward]
+  reviews_fields: [reviews_required, reviewers, checks]
+  difficulty_fields: [complexity, difficulty, level]
+  days_index: 0.34
+  review_days: 3
+  xp_per_hour: 10
+  hours_band: [8, 24]
+  reviews_per_project: 3
+  min_reviews: 2
+  p2p_minutes_step: 15
+  p2p_minutes_default: 30
+  p2p_minutes_by_difficulty:
+    intro: 15
+    basic: 15
+    intermediate: 30
+    advanced: 45
+    capstone: 45
+check: check.py

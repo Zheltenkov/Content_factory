@@ -1,0 +1,24 @@
+id: autotests
+title: Политика автотестов
+source: "Регламент 3.7"
+hooks:
+  - at: pre.stage
+    stages: [curriculum.planner]
+requires: [curriculum.projects]
+produces: [curriculum.autotest_policy]
+severity: soft
+params:
+  id_fields: [id, project_id, title, name]
+  type_fields: [type, project_type, kind, format]
+  language_fields: [language, languages, stack]
+  technical_types: [technical, code, programming, database, sql, ci, cicd, pipeline]
+  theoretical_types: [theory, theoretical, research, essay, analysis]
+  docker_images:
+    c: basic
+    c++: basic
+    cpp: basic
+    python: python
+    sql: sql
+  default_docker_image: basic
+  checklist_mode: check-list.yml
+check: check.py

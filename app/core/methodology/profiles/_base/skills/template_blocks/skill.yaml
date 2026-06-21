@@ -1,0 +1,49 @@
+id: template_blocks
+title: Неизменные шаблонные блоки
+source: "Регламент 3.2.3"
+hooks:
+  - at: prompt.augment
+    stages: [generator.finalize]
+  - at: post.validate
+    stages: [generator.evaluation]
+severity: hard
+params:
+  require_metadata_flag: template_blocks_required
+  required_artifact_targets: [readme_project]
+  blocks_markdown: |
+    ## General Rules
+
+    - Работай в ветке develop.
+    - Весь код и материалы проекта должны находиться в репозитории GitLab.
+    - Следуй правилам Школы 21 и инструкции p2p-проверки.
+
+    ## Disclaimer
+
+    Этот проект является учебным материалом Школы 21. Используй его только в рамках образовательного процесса.
+
+    ## Feedback
+
+    Если ты заметил ошибку или хочешь предложить улучшение, заполни форму обратной связи по ссылке из проекта.
+  blocks:
+    rules:
+      title: General Rules
+      text: |
+        ## General Rules
+
+        - Работай в ветке develop.
+        - Весь код и материалы проекта должны находиться в репозитории GitLab.
+        - Следуй правилам Школы 21 и инструкции p2p-проверки.
+    disclaimer:
+      title: Disclaimer
+      text: |
+        ## Disclaimer
+
+        Этот проект является учебным материалом Школы 21. Используй его только в рамках образовательного процесса.
+    feedback:
+      title: Feedback
+      text: |
+        ## Feedback
+
+        Если ты заметил ошибку или хочешь предложить улучшение, заполни форму обратной связи по ссылке из проекта.
+instructions: instructions.md
+check: check.py

@@ -1,0 +1,38 @@
+id: checklist
+title: Чек-лист проверки проекта
+source: "Регламент 3.3"
+hooks:
+  - at: prompt.augment
+    stages: [generator.practice]
+  - at: post.validate
+    stages: [generator.evaluation]
+severity: hard
+params:
+  filenames: [check-list.yml, checklist.yml]
+  content_metadata_keys: [content, text, yaml, body]
+  item_text_fields: [criteria, criterion, text, title, description, question]
+  child_fields: [items, checks, criteria, questions]
+  objective_markers:
+    - есть
+    - содержит
+    - не содержит
+    - запускается
+    - проходит
+    - возвращает
+    - без ошибок
+    - минимум
+    - не менее
+    - равен
+    - создан
+    - заполнен
+  vague_terms:
+    - аккуратно
+    - качественно
+    - понятно
+    - хорошо
+    - удобно
+    - оптимально
+    - корректно оформлено
+    - по возможности
+instructions: instructions.md
+check: check.py

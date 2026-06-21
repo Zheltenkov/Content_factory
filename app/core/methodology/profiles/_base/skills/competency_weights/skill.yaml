@@ -5,6 +5,6 @@ hooks:
   - at: pre.stage
     stages: [curriculum.planner]
 requires: [reference.competencies, curriculum.projects]
-produces: [curriculum.competency_weights]
+produces: [curriculum.competency_weights, curriculum.competency_weight_issues]
 severity: soft
 check: check.py

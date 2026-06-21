@@ -1,0 +1,15 @@
+id: branch_structure
+title: Логическая структура ветки
+source: "Регламент 3.2.1"
+hooks:
+  - at: pre.stage
+    stages: [curriculum.planner]
+requires: [curriculum.projects]
+produces: [curriculum.branch_order, curriculum.branch_structure]
+severity: soft
+params:
+  id_fields: [id, project_id, title, name]
+  difficulty_fields: [complexity, difficulty, level]
+  difficulty_order: [intro, basic, intermediate, advanced, capstone]
+  max_rank_jump: 1
+check: check.py

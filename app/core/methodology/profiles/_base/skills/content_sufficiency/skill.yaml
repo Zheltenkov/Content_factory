@@ -1,0 +1,8 @@
+id: content_sufficiency
+title: Достаточность учебного материала
+source: "Регламент 3.2.2"
+hooks:
+  - at: prompt.augment
+    stages: [generator.theory, generator.practice]
+severity: soft
+instructions: instructions.md

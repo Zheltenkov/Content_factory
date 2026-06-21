@@ -4,5 +4,12 @@ source: "Регламент 3.1.1"
 hooks:
   - at: pre.stage
     stages: [curriculum.planner]
+requires: [reference.competencies]
+produces: [curriculum.assumed_known, curriculum.experienced_share, curriculum.level_source]
 severity: soft
-params: {assumed_known: basics}
+params:
+  default_source: pool
+  assumed_known: []
+  experienced_share: 0.30
+  previous_fields: [previous_competencies, competencies, competency_refs, outcomes]
+check: check.py

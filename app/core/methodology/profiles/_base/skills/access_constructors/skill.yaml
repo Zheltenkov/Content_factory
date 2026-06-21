@@ -1,0 +1,23 @@
+id: access_constructors
+title: Условия открытия проектов
+source: "Регламент 3.1.2"
+hooks:
+  - at: pre.stage
+    stages: [curriculum.planner]
+requires: [curriculum.projects]
+produces: [curriculum.access_policy]
+severity: soft
+params:
+  id_fields: [id, project_id, title, name]
+  dependency_fields: [depends_on, prerequisites, prerequisite_projects]
+  exam_fields: [has_exam, exam_required, after_exam]
+  group_size_fields: [group_size, participants, cohort_size]
+  customer_preference_fields: [customer_preference, deadline_preference, access_preference]
+  small_group_max: 12
+  modes:
+    sequential: after_completion
+    after_review: after_review
+    parallel: parallel
+    after_exam: after_exam
+  relaxed_markers: [no_strict_deadlines, flexible, parallel, без жестких дедлайнов]
+check: check.py

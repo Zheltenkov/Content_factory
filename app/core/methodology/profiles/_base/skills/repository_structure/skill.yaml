@@ -1,0 +1,16 @@
+id: repository_structure
+title: Структура репозитория проекта
+source: "Регламент 3.5"
+hooks:
+  - at: post.validate
+    stages: [generator.evaluation]
+severity: hard
+params:
+  inventory_metadata_keys: [repo_files, repository_files, files]
+  inventory_kinds: [file, repository, repo_inventory]
+  protected_root: masters
+  public_root: for_forks
+  required_files: [README.md, LICENSE, .gitignore, .gitattributes]
+  required_hidden: [tests, check-list.yml]
+  forbidden_public: [tests, check-list.yml]
+check: check.py

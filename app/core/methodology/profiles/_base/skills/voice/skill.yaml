@@ -4,6 +4,9 @@ source: "Регламент 3.2.4"
 hooks:
   - at: prompt.augment
     stages: [generator.title_annotation, generator.intro, generator.theory, generator.practice]
+  - at: post.validate
+    stages: [generator.style_guard]
 severity: soft
 params: {formality: peer}
 instructions: instructions.md
+check: check.py

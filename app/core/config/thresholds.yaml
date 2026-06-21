@@ -19,6 +19,30 @@ structural:
     chapter_min_chars: 50
 
 skills:
+  voice:
+    max_bureaucratic_hits: 1
+    bureaucratic_terms:
+      - в рамках
+      - данный
+      - настоящим
+      - осуществляется
+      - осуществить
+      - производится
+      - посредством
+      - с целью
+      - в целях
+      - следует отметить
+      - имеет место
+    placeholder_terms:
+      - todo
+      - tbd
+      - lorem ipsum
+      - здесь будет
+      - вставьте
+      - заполнить
+    placeholder_patterns:
+      - "\\{\\{[^}]+\\}\\}"
+      - "<[^>]*(todo|tbd|placeholder|заполнить)[^>]*>"
   visual_quality:
     min_resolution: [1200, 800]
     min_long_side: 1000
