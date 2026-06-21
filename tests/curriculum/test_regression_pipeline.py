@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+
+import yaml
 
 from app.core.models import Competency
 from app.modules.curriculum.stages import stage_atomize, stage_normalize
 from app.modules.curriculum.stages.pipeline import run_catalog_pipeline
 from app.modules.curriculum.stages.stage_brief_to_catalog import BriefCatalogResult, run as brief_to_catalog
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class FakeStructuredClient:
@@ -62,12 +67,19 @@ def test_offline_intake_preserves_dense_backend_brief_semantics() -> None:
     assert result.up.status == "built"
     assert len(result.up.rows) >= 18
     assert {"apply", "analyze", "create"} <= bloom_levels
-    assert "Проектирование REST API" in accepted_names
-    assert "Моделирование SQL-схемы" in accepted_names
-    assert "Написание SQL-запросов" in accepted_names
-    assert "Настройка CI/CD pipeline" in accepted_names
-    assert "Диагностика инцидентов" in accepted_names
+    joined_names = " ".join(accepted_names).casefold()
+    for semantic_marker in ("rest api", "sql", "docker", "ci/cd", "pytest", "инцидент"):
+        assert semantic_marker in joined_names
     assert not any("8 часов" in name for name in accepted_names)
+
+
+def test_skill_name_rules_do_not_embed_backend_spotcheck_repairs() -> None:
+    rules_path = ROOT / "app/modules/curriculum/stages/skill_name_rules.yaml"
+    payload = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
+
+    assert "fragment_repairs" not in payload
+    assert "object_rewrites" not in payload
+    assert "tech_terms" not in payload
 
 
 def test_brief_to_catalog_uses_core_structured_llm_client() -> None:

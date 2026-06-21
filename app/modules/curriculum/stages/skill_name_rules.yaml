@@ -36,40 +36,6 @@ action_prefixes:
   - pattern: '^диагностировать\s+(.+)$'
     noun: Диагностика
 
-fragment_repairs:
-  автотесты pytest: Разработка автотестов pytest
-  безопасной обработкой токенов: Обработка токенов
-  бд: Работа с БД
-  code review: Проведение code review
-  ci/cd pipeline: Настройка CI/CD pipeline
-  контейнеризацией: Контейнеризация сервиса
-  деплоем сервиса: Деплой сервиса
-  диагностикой инцидентов: Диагностика инцидентов
-  очередями сообщений: Работа с очередями сообщений
-  openapi: Проектирование OpenAPI-контракта
-  pipeline: Настройка pipeline
-  postgresql: Работа с PostgreSQL
-  тестами: Разработка тестов сервиса
-  "финальный проект: backend-сервис с rest api": Разработка backend-сервиса с REST API
-
-object_rewrites:
-  docker окружение: Docker-окружения
-  sql-запросы: SQL-запросов
-  sql-схему: SQL-схемы
-
-tech_terms:
-  - SQL
-  - PostgreSQL
-  - API
-  - REST
-  - OpenAPI
-  - CI/CD
-  - Git
-  - Docker
-  - pytest
-  - LLM
-  - MVP
-
 bloom_signals:
   create: '\b(созда|разработ(к|а|ыва|ать|ает|ают|ал|али|ан)|спроект|постро|собир|контейнериз)'
   analyze: '\b(анализ|оцени|сравнив|выбира|проектир|моделир|диагност)'
