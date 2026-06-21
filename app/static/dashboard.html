@@ -14,5 +14,14 @@
       </header>
       <section class="module-grid" aria-label="Модули">{{ module_tiles }}</section>
     </main>
+    <script>
+      document.addEventListener("click", (event) => {
+        const tile = event.target.closest(".module-tile");
+        if (!tile) return;
+        if (tile.dataset.action === "goToCurriculum") {
+          window.location.href = "/static/curriculum/panel.html";
+        }
+      });
+    </script>
   </body>
 </html>

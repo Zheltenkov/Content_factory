@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Учебный план · Content Factory</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="workbench curriculum-panel" data-module="curriculum">
+      <header class="workbench-header">
+        <a class="back-link" href="/">Content Factory</a>
+        <h1>Учебный план</h1>
+        <div class="toolbar">
+          <label class="file-button">
+            CSV
+            <input id="csvInput" type="file" accept=".csv,text/csv" />
+          </label>
+          <button id="exportCsv" type="button">Экспорт CSV</button>
+        </div>
+      </header>
+
+      <section class="curriculum-grid">
+        <aside class="side-panel" aria-label="Навигация по учебному плану">
+          <label>
+            Направление
+            <select id="planSelect"></select>
+          </label>
+          <label>
+            Блок
+            <select id="blockSelect"></select>
+          </label>
+          <label>
+            Проект
+            <select id="projectSelect"></select>
+          </label>
+          <div id="statusLine" class="status-line" aria-live="polite"></div>
+        </aside>
+
+        <form id="projectForm" class="editor-panel">
+          <div class="form-row two">
+            <label>
+              Название
+              <input id="projectTitle" name="title" required />
+            </label>
+            <label>
+              Порядок
+              <input id="projectOrder" name="order" type="number" min="1" required />
+            </label>
+          </div>
+          <div class="form-row two">
+            <label>
+              Блок
+              <input id="projectBlock" name="block" />
+            </label>
+            <label>
+              Трудоемкость
+              <input id="projectHours" name="hours_astro" type="number" min="0" step="0.5" />
+            </label>
+          </div>
+          <label>
+            Описание
+            <textarea id="projectDescription" name="description" rows="4"></textarea>
+          </label>
+          <label>
+            Образовательные результаты
+            <textarea id="projectOutcomes" name="outcomes_can" rows="5"></textarea>
+          </label>
+          <label>
+            Инструменты
+            <input id="projectTools" name="required_tools" />
+          </label>
+          <label>
+            Сторителлинг
+            <textarea id="projectStory" name="storytelling" rows="4"></textarea>
+          </label>
+          <div class="form-actions">
+            <button id="saveProject" type="submit">Сохранить</button>
+          </div>
+        </form>
+      </section>
+    </main>
+    <script src="/static/curriculum/panel.js"></script>
+  </body>
+</html>

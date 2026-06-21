@@ -70,6 +70,38 @@ def test_curriculum_router_is_registered_in_builtin_manifest() -> None:
     assert curriculum["tables"] == ["curriculum_plan", "curriculum_project"]
 
 
+def test_curriculum_csv_import_export_and_panel_render() -> None:
+    client = _client()
+    csv_text = "\n".join(
+        [
+            "Тематический блок;Цели блока;№;Название проекта;Краткое описание проекта;Образовательные результаты;Список навыков;Обязательные инструменты;SJM;Трудоемкость, астр.часы",
+            "Backend;Собрать сервис;1;REST API;Сервис с API;Проектирует endpoint;REST API;OpenAPI;Команда запускает API;12",
+        ]
+    )
+
+    imported = client.post(
+        "/curriculum/plans/import-csv",
+        json={"csv_text": csv_text, "title": "CSV plan", "direction": "Backend"},
+    )
+    assert imported.status_code == 201
+    plan_id = imported.json()["plan_id"]
+
+    cascade = client.get(f"/curriculum/plans/{plan_id}/cascade")
+    assert cascade.status_code == 200
+    assert cascade.json()["blocks"][0]["name"] == "Backend"
+    assert cascade.json()["blocks"][0]["projects"][0]["title"] == "REST API"
+
+    exported = client.get(f"/curriculum/plans/{plan_id}/export.csv")
+    assert exported.status_code == 200
+    assert "Название проекта" in exported.text
+    assert "REST API" in exported.text
+
+    panel = client.get("/static/curriculum/panel.html")
+    assert panel.status_code == 200
+    assert 'id="planSelect"' in panel.text
+    assert "/static/curriculum/panel.js" in panel.text
+
+
 def _client() -> TestClient:
     engine = create_engine(
         "sqlite://",

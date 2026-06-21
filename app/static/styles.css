@@ -60,3 +60,149 @@ h1 {
   color: #6b7280;
   font-size: 16px;
 }
+
+button,
+select,
+input,
+textarea {
+  font: inherit;
+}
+
+.module-tile {
+  cursor: pointer;
+}
+
+.workbench {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.workbench-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  max-width: 1280px;
+  margin: 0 auto 20px;
+}
+
+.workbench-header h1 {
+  font-size: 28px;
+}
+
+.back-link {
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+button,
+.file-button {
+  border: 1px solid #c9d1db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #111827;
+  cursor: pointer;
+  padding: 9px 12px;
+  font-weight: 700;
+}
+
+.file-button input {
+  display: none;
+}
+
+.curriculum-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.side-panel,
+.editor-panel {
+  border: 1px solid #d7dce2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.side-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.editor-panel {
+  display: grid;
+  gap: 14px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+select,
+input,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #111827;
+  padding: 9px 10px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.form-row.two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 180px);
+  gap: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.status-line {
+  min-height: 20px;
+  color: #5b6573;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .dashboard-shell,
+  .workbench {
+    padding: 18px;
+  }
+
+  .workbench-header,
+  .curriculum-grid,
+  .form-row.two {
+    grid-template-columns: 1fr;
+  }
+
+  .workbench-header {
+    display: grid;
+  }
+
+  .toolbar {
+    margin-left: 0;
+  }
+}

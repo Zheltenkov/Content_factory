@@ -5,9 +5,11 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.models import UPProject, UPSkeleton
+from app.modules.curriculum.csv_io import up_from_csv, up_to_csv
 from app.modules.curriculum.repo import CurriculumCatalogRepo, CurriculumProjectRecord, default_curriculum_repo
 
 router = APIRouter(prefix="/curriculum", tags=["curriculum"])
@@ -53,6 +55,16 @@ class CurriculumProjectPatch(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
+class CurriculumCsvImport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    csv_text: str
+    title: str | None = None
+    direction: str | None = None
+    source_policy: str = "csv_import"
+    author_ref: str | None = None
+
+
 class CurriculumPlanCreated(BaseModel):
     plan_id: int
     project_count: int
@@ -68,6 +80,24 @@ class CurriculumProjectResponse(BaseModel):
     plan_id: int
     row_number: int
     project: UPProject
+
+
+class CurriculumCascadeProject(BaseModel):
+    project_id: int
+    order: int
+    title: str
+
+
+class CurriculumCascadeBlock(BaseModel):
+    name: str
+    projects: list[CurriculumCascadeProject]
+
+
+class CurriculumCascadeResponse(BaseModel):
+    plan_id: int
+    title: str
+    direction: str
+    blocks: list[CurriculumCascadeBlock]
 
 
 def get_curriculum_repo() -> CurriculumCatalogRepo:
@@ -97,12 +127,57 @@ def create_plan(
     return CurriculumPlanCreated(plan_id=result.plan_id, project_count=result.project_count)
 
 
+@router.post("/plans/import-csv", response_model=CurriculumPlanCreated, status_code=status.HTTP_201_CREATED)
+def import_plan_csv(
+    payload: CurriculumCsvImport,
+    repo: CurriculumCatalogRepo = Depends(get_curriculum_repo),
+) -> CurriculumPlanCreated:
+    try:
+        plan = up_from_csv(payload.csv_text, title=payload.title, direction=payload.direction)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    result = repo.save_curriculum_plan(plan, source_policy=payload.source_policy, author_ref=payload.author_ref)
+    return CurriculumPlanCreated(plan_id=result.plan_id, project_count=result.project_count)
+
+
 @router.get("/plans/{plan_id}", response_model=CurriculumPlanResponse)
 def get_plan(plan_id: int, repo: CurriculumCatalogRepo = Depends(get_curriculum_repo)) -> CurriculumPlanResponse:
     plan = repo.load_curriculum_plan(plan_id)
     if plan is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="curriculum plan not found")
     return CurriculumPlanResponse(plan_id=plan_id, plan=plan)
+
+
+@router.get("/plans/{plan_id}/cascade", response_model=CurriculumCascadeResponse)
+def get_plan_cascade(plan_id: int, repo: CurriculumCatalogRepo = Depends(get_curriculum_repo)) -> CurriculumCascadeResponse:
+    plan = repo.load_curriculum_plan(plan_id)
+    if plan is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="curriculum plan not found")
+    blocks: dict[str, list[CurriculumCascadeProject]] = {}
+    for record in repo.list_curriculum_projects(plan_id):
+        block = record.project.block or "Без блока"
+        blocks.setdefault(block, []).append(
+            CurriculumCascadeProject(project_id=record.project_id, order=record.project.order, title=record.project.title)
+        )
+    return CurriculumCascadeResponse(
+        plan_id=plan_id,
+        title=plan.title,
+        direction=plan.direction,
+        blocks=[CurriculumCascadeBlock(name=name, projects=projects) for name, projects in blocks.items()],
+    )
+
+
+@router.get("/plans/{plan_id}/export.csv")
+def export_plan_csv(plan_id: int, repo: CurriculumCatalogRepo = Depends(get_curriculum_repo)) -> Response:
+    plan = repo.load_curriculum_plan(plan_id)
+    if plan is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="curriculum plan not found")
+    content = "\ufeff" + up_to_csv(plan)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="curriculum-plan-{plan_id}.csv"'},
+    )
 
 
 @router.put("/plans/{plan_id}", response_model=CurriculumPlanResponse)
@@ -156,6 +231,13 @@ def create_project(
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="curriculum plan not found")
     return _project_response(record)
+
+
+@router.get("/plans/{plan_id}/projects", response_model=list[CurriculumProjectResponse])
+def list_projects(plan_id: int, repo: CurriculumCatalogRepo = Depends(get_curriculum_repo)) -> list[CurriculumProjectResponse]:
+    if repo.load_curriculum_plan(plan_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="curriculum plan not found")
+    return [_project_response(record) for record in repo.list_curriculum_projects(plan_id)]
 
 
 @router.get("/projects/{project_id}", response_model=CurriculumProjectResponse)

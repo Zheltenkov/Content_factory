@@ -859,6 +859,23 @@ class CurriculumCatalogRepo:
                 project=_project_from_row(row),
             )
 
+    def list_curriculum_projects(self, plan_id: int) -> list[CurriculumProjectRecord]:
+        with self._connect() as con:
+            rows = con.execute(
+                CURRICULUM_PROJECT.select()
+                .where(CURRICULUM_PROJECT.c.plan_id == plan_id)
+                .order_by(CURRICULUM_PROJECT.c.row_number, CURRICULUM_PROJECT.c.id)
+            ).mappings().all()
+            return [
+                CurriculumProjectRecord(
+                    project_id=int(row["id"]),
+                    plan_id=int(row["plan_id"]),
+                    row_number=int(row["row_number"]),
+                    project=_project_from_row(row),
+                )
+                for row in rows
+            ]
+
     def update_curriculum_project(self, project_id: int, project: UPProject) -> CurriculumProjectRecord | None:
         with self._connect() as con:
             row = con.execute(CURRICULUM_PROJECT.select().where(CURRICULUM_PROJECT.c.id == project_id)).mappings().first()
