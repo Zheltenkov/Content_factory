@@ -1,100 +1,110 @@
-# START_HERE.md — как устроен репозиторий и как ставить задачи Codex
+# START_HERE.md — рабочий гайд по миграции (Content_factory)
 
-> Положить в **корень** репо `S21_factory/`. Отвечает на: что под что, что удалить, куда регламенты,
-> и как сформулировать задачу для Codex.
+> Корень репо. Структура: `AGENTS.md` (читается Codex автоматически), `docs/` (спека, план, задачи,
+> решения, регламенты, ноутбуки, эталоны), `legacy/` (исходники ver1, видны Codex), `app/` (сборка).
 
-## Главный принцип: две зоны
+## Где мы сейчас
+- **Волна 0 — код готов:** T0.1 каркас, T0.2 registry+плитки, T0.3 alembic-цепочка (12 ревизий из CG),
+  T0.4 схема Справочника (013). Осталось закрыть строгий DoD: прогнать `alembic upgrade head` на живом PG
+  (Codex-cloud до localhost не достучится — запускай ЛОКАЛЬНО; см. низ файла).
+- **Дальше:** T1.1+TM.1 (методслой) → `reference` первым портом-индикатором → TM.2/TM.3 (скиллы) →
+  generator (G1…) → checker. Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
-| Зона | Что это | Codex |
-|---|---|---|
-| `docs/` | спека, план, регламенты, **эталоны** | **только читает**, никогда не редактирует |
-| корень + `app/` | сам монорепо (его ещё нет — создаёт волна 0) | **строит сюда** |
+## Три правила, которыми держится результат (выстраданы)
+1. **Одна задача = один прогон Codex.** Не «собери проект». После каждой — **пуш**, затем сверь `wc -l`
+   результата против источника СВОИМИ глазами + спот-чек, что код реальный.
+2. **Не верить только зелёным тестам.** Они могут быть зелёными на заглушке. Критерий — поведение против
+   источника, а не число строк и не «N passed».
+3. **legacy должен быть виден Codex.** Он уже загружен в `legacy/` и закоммичен. Страж источника в
+   порт-промптах остановит, если что-то не на месте, — не даст генерить по памяти.
 
-`to_do/` — это сейчас свалка из обеих зон. Переименуй `to_do/` → `docs/` и наведи порядок ниже.
-**`AGENTS.md` — в КОРЕНЬ** репо (не в `docs/`): Codex и Claude Code автоматически читают `AGENTS.md`
-из корня каждую сессию. Внутри `docs/` он не подхватится.
+## Как ставить задачу
+Codex сам читает `AGENTS.md`. Даёшь РОВНО один промпт за прогон. Для задач из legacy — промпт со стражем
+ниже. Для не-портовых (скелет, скиллы из регламентов) — обычные промпты ниже.
 
-## Шаг 1 — удалить дубли-ландмайны (сплющенные копии из «показа по файлу»)
+---
 
-Эти файлы в корне `to_do/` — плоские копии того, что уже лежит структурно внутри папок. Codex
-примет их за настоящие и запутается. Удалить:
-
+## ПРОМПТ ПОРТА (для всех задач, тянущих из legacy) — со СТРАЖЕМ ИСТОЧНИКА
+Главный антидот к скелету. Конкретные пути/строки под ver1 — в `docs/GENERATOR_CHECKER_PORT.md`.
 ```
-to_do/check.py                 # = document_integrity_skill/.../skills/document_integrity/check.py
-to_do/skill.yaml               # = тот же document_integrity skill.yaml
-to_do/harness.py               # = harness_ref/core/methodology/harness.py
-to_do/test_harness.py          # = harness_ref/tests/test_harness.py
-to_do/README.md                # = harness_ref/README.md
-to_do/CONSOLIDATION_PLAN.md    # СТАРАЯ версия (§11 открыт)
-```
-И переименуй: `CONSOLIDATION_PLAN (1).md` → `CONSOLIDATION_PLAN.md` (это **новая**, §11 закрыт).
-
-## Шаг 2 — целевая раскладка
-
-```
-S21_factory/
-├── AGENTS.md                      ← В КОРЕНЬ (правила; Codex читает автоматически)
-├── START_HERE.md                  ← этот файл
-├── docs/                          ← бывший to_do/, ТОЛЬКО ЧТЕНИЕ
-│   ├── CONSOLIDATION_PLAN.md       (волны + DoD)
-│   ├── SKILLS_ARCHITECTURE.md      (слой правил: skills/hooks/harness/profiles)
-│   ├── TASKS.md                    (атомарные задачи — отсюда берёшь по одной)
-│   ├── DECISIONS.md                (закрытые решения §11)
-│   ├── regulations/                ← ДОБАВИТЬ (см. шаг 3): входные данные для скиллов
-│   │   ├── osnova.md  deti.md  commerce.md
-│   ├── notebooks/                  ← ДОБАВИТЬ: 3 .ipynb (источник осей чекера, волна 5)
-│   └── reference/                  ← рабочие ЭТАЛОНЫ (Codex копирует паттерн отсюда)
-│       ├── harness_ref/            (harness + контракт + 3 профиля; тесты 5/5)
-│       └── document_integrity_skill/
-└── app/  migrations/  tests/  static/   ← создаёт волна 0 (T0.1)
+ПОРТ <что> из legacy. ОДНА задача. Не брать следующую. Код ТОЛЬКО из прочитанного источника.
+ШАГ 0 — СТРАЖ ИСТОЧНИКА (провал => СТОП, ничего не менять):
+  Проверь, что <legacy/путь> существует и НЕ пуст; выведи его `wc -l`.
+  Если нет/пусто -> напиши "LEGACY ОТСУТСТВУЕТ — ПОРТ НЕВОЗМОЖЕН" и остановись. НЕ генерируй по памяти.
+ШАГ 1 — прочитай источник целиком <legacy/путь>; AGENTS.md; строку задачи в docs/TASKS.md.
+ШАГ 2 — перенеси РЕАЛЬНУЮ логику в <app/путь>, компактизируя по AGENTS (промпты->prompts/, модели->core,
+  без дублей), НЕ выкидывая функционал. Упёрся в бюджет -> СТОП и сообщи (не стабь, чтобы влезть).
+ШАГ 3 — тест под РЕАЛЬНОЕ поведение (не под заглушку): обычный кейс + граничный.
+ШАГ 4 — покажи `wc -l` источника и результата; вывод теста; что НЕ перенёс и почему.
+DoD: объём сопоставим с источником (ориентир ~40-60%; <30% — почти наверняка скелет, объясни).
+  Тест зелёный на реальной логике. Не брать следующую.
 ```
 
-`docs/reference/harness_ref/` — самый полный эталон (все профили + рабочий harness).
-`document_integrity_skill/` добавляет `document_integrity/check.py` и поле `project_id` на
-`GeneratedDoc` — при T1.1/TM.1 они сливаются в один `app/core/methodology/`.
+---
 
-## Шаг 3 — документы: грузить или нет
+## Прогресс и готовые промпты
 
-**Да, грузить — но как `.md`, не `.docx`.** Скиллы *генерируются из* регламентов (рецепт TM.2:
-проза секции → `instructions.md`, числа → `check.py`). Без текста регламентов Codex не сможет
-написать `voice`/`checklist`/`lesson_structure` достоверно. `.docx` — бинарь-zip, Codex читает его
-плохо и не диффит; `.md` — то, что нужно.
+- [x] **T0.1 / T0.2 / T0.3 / T0.4** — Волна 0 (код). Закрыть строгий DoD = `alembic upgrade head` на PG.
 
-| Документ | Куда | Кто потребляет |
-|---|---|---|
-| Регламенты Основа/Дети/Коммерция (`.md`) | `docs/regulations/` | TM.2 (генерация скиллов), TM.3 (профили kids/commerce) |
-| 3 ноутбука (structural_criteria_v2, didactic jury/prototype) | `docs/notebooks/` | волна 5 (две оси чекера) |
-
-Готовые `.md`-экстракты трёх регламентов — в приложенном архиве, просто распакуй в `docs/regulations/`.
-(Связь «какой скилл из какой секции» уже расписана в `SKILLS_ARCHITECTURE.md §8`.)
-
-## Шаг 4 — как поставить задачу Codex (переиспользуемый промпт)
-
-Codex читает `AGENTS.md` из корня сам. Задача — всегда ОДНА из `docs/TASKS.md`. Шаблон:
-
+### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
-Реализуй задачу <ID> из docs/TASKS.md (например, T0.1).
-
-Сначала прочитай:
-- AGENTS.md (правила — соблюдай ВСЕ)
-- строку задачи <ID> в docs/TASKS.md: вход, файлы, бюджет строк, «Образец», DoD
-- «Образец» из строки задачи (если указан) — копируй паттерн из docs/reference/, не изобретай
-- релевантную секцию docs/CONSOLIDATION_PLAN.md или docs/SKILLS_ARCHITECTURE.md
-
-Сделай ТОЛЬКО эту задачу. Не трогай другие модули. Уложись в бюджет строк.
-Заверши тестом (один «чистый» вход + один «битый») — зелёный тест входит в DoD.
-НЕ бери следующую задачу.
+Реализуй T1.1 + TM.1 из docs/TASKS.md. Прочитай: AGENTS.md; T1.1, TM.1; docs/SKILLS_ARCHITECTURE.md §6.
+Это ПЕРЕНОС из эталонов, логику не переписывать:
+1. Скопируй docs/harness_ref/core/methodology/{rules.py,harness.py} и весь profiles/ в app/core/methodology/.
+2. Влей реальный document_integrity: check.py из
+   docs/document_integrity_skill/document_integrity/core/methodology/profiles/_base/skills/document_integrity/check.py
+   -> app/core/methodology/profiles/_base/skills/document_integrity/check.py.
+3. ИСПРАВЬ ключ хука в этом document_integrity/skill.yaml: `- on:` -> `- at:` (иначе harness падает).
+4. Скопируй оба теста в tests/, поправь импорт-пути под app/.
+DoD: pytest tests/test_harness.py tests/test_document_integrity.py — 10/10 зелёных. Не бери следующую.
 ```
 
-Меняешь только `<ID>` и берёшь задачи по порядку зависимостей из TASKS.md
-(`0 → 1 ∥ M → 2 → …`). Один прогон Codex = одна задача.
+### ▶ reference — ПЕРВЫЙ ПОРТ-ИНДИКАТОР (после методслоя)
+Источник `legacy/Spravochnik/viewer/app.py` (7595 строк). Это проверка, что legacy реально читается:
+если `app/modules/reference/service.py` вышел в тысячи строк, а не сотню — цикл со скелетами разорван.
+Бери ПРОМПТ ПОРТА, `<legacy/путь>` = legacy/Spravochnik/viewer/app.py, `<app/путь>` = app/modules/reference/.
 
-## Шаг 5 — первая задача
+### TM.2.<n> — скиллы из регламентов (без legacy, по одному за прогон)
+```
+Реализуй TM.2.<n> — скилл <skill_id> (docs/TASKS.md таблица TM.2). Прочитай: AGENTS.md; строку <skill_id>
+в docs/SKILLS_ARCHITECTURE.md §8.1; секцию <секция> в docs/regulations/osnova.md; ОДИН эталон в
+docs/harness_ref/.../_base/skills/ (augment->voice; validate->visual_quality; producer->competency_weights).
+Создай app/core/methodology/profiles/_base/skills/<skill_id>/: skill.yaml (ключ `at:`, namespaced-стадии,
+severity/params по §8.1); instructions.md (если at: prompt.augment); check.py (если машинное правило,
+def check(doc,params)->list[RuleIssue], <=150 строк; producer: def prepare(ctx,params)->dict);
+tests/test_<skill_id>.py (чистый + битый). DoD: тест зелёный + harness резолвит _base. Не бери следующий.
+```
+Маппинг skill_id -> секция osnova.md: voice 3.2.4 | content_sufficiency 3.2.2 | branch_structure 3.2.1 |
+audience_level 3.1.1 | software_constraints 3.1.2 | checklist 3.3 | repository_structure 3.5 |
+autotests 3.7 | template_blocks 3.2.3 | workload_planning 3.1.3 | access_constructors 3.1.2.
+(competency_weights — уже в harness_ref, перенести.)
 
-`T0.1` (скелет монорепо) → затем `T0.2` (реестр модулей) → `T1.1`/`TM.1` (перенести готовый harness +
-3 эталона в `app/core/methodology/`, прогнать `test_harness.py` 5/5 в репо). После этого волна M
-(скиллы из §8) и волна 2 (УП) идут по образцу.
+### TM.3 — профили kids + commerce
+```
+Реализуй TM.3 из docs/TASKS.md. Прочитай: AGENTS.md; docs/SKILLS_ARCHITECTURE.md §8.2,§8.3;
+docs/harness_ref/.../profiles/{kids,commerce} (каркас); docs/regulations/{deti,commerce}.md.
+Допиши kids-оверлеи (program_types, lesson_structure, mentor_assets, assessments, student_portrait)
+реальными instructions.md/check.py по образцу _base и регламента Дети (3.1.3, 3.2.4). commerce проверь.
+DoD: harness резолвит kids (main/intensive/master_class) и commerce; producers_bound_to("generator.")==[]; тест.
+```
 
-> Перед волной 5 закрой единственный внешний «подтвердить» из `DECISIONS.md D4` — слаги OpenRouter и
-> `GENERATOR_MODEL`. Остальные «подтвердить» (baseline бассейна, hours_band, живой ли viewer) всплывут
-> по ходу и старт не держат.
+### generator (G1…G5) и checker (C1…C4)
+Полная разбивка на под-задачи с заполненными промптами и путями ver1 — в **`docs/GENERATOR_CHECKER_PORT.md`**.
+Брать строго по одной, начиная с G1 (оркестрация -> engine). checker — помни: в основном НЕ порт (rubric
+заменяется скиллами), типы промптов там разные.
+
+### Волны 2 (УП), 6 (UI), 7 (петля)
+В `docs/TASKS.md`. Волна 2 атомарна; UI (W6) — отдельными задачами на panel.{html,js} модуля из
+`legacy/Content_generator/static`. Перед волной 5 закрой `docs/DECISIONS.md D4` (слаги OpenRouter).
+
+---
+
+## Закрыть строгий DoD Волны 0 (нужен PG)
+`alembic upgrade head` запускай ЛОКАЛЬНО (Codex-cloud не достучится до твоего PG).
+Быстрый PG через Docker:
+```bat
+docker run --name cf-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=content_factory -p 5432:5432 -d postgres:16
+```
+В `.env`: `DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/content_factory`
+Затем из корня: `alembic upgrade head` && `alembic current` (= 013). Без Docker — бесплатный Neon/Supabase,
+строку подключения в `.env`. После успешного upgrade + проверки таблиц Волна 0 закрыта строго по DoD.
