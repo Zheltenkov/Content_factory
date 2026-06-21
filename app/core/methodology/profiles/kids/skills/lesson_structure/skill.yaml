@@ -8,4 +8,10 @@ hooks:
     stages: [generator.evaluation]
 severity: hard
 applies_to: {artifact_family: [lesson]}
-params: {lesson_hours: [2, 4], project_span: [2, 4], duration_minutes: null}
+params:
+  lesson_hours: [2, 4]
+  project_span: [2, 4]
+  duration_minutes: null
+  early_progress_minutes: 20
+instructions: instructions.md
+check: check.py

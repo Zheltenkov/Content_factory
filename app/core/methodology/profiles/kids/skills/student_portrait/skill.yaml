@@ -4,6 +4,16 @@ source: "Регламент 3.1.3"
 hooks:
   - at: prompt.augment
     stages: [generator.intro]
+  - at: post.validate
+    stages: [generator.evaluation]
 severity: soft
 applies_to: {artifact_family: [lesson]}
-params: {}
+params:
+  require_sjm: true
+  portrait_markers:
+    knowledge: [знает, понимает, знания]
+    abilities: [умеет, сможет, умения]
+    soft_skills: [софт, коммуникац, команд, обратная связь]
+  sjm_markers: [sjm, student journey map, путь ученика, путь наставника, точки опыта]
+instructions: instructions.md
+check: check.py

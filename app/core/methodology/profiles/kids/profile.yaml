@@ -2,22 +2,25 @@ id: kids
 title: Детское направление (Старт)
 extends: _base
 terminology: {branch: программа, curriculum: программа обучения}
-overrides: [voice]
+overrides: [voice, checklist]
 disables: [readme_structure]
 adds: [program_types, lesson_structure, mentor_assets, assessments, student_portrait]
 program_types:
   main:
     artifact_target: curriculum_plan
     content_model: lesson_course
-    params: {assessments.required: [entry, midterm, final], lesson_structure.lesson_hours: [2, 4], lesson_structure.project_span: [2, 4]}
+    params: {program_types.kind: main, assessments.required: [entry, midterm, final], lesson_structure.lesson_hours: [2, 4], lesson_structure.project_span: [2, 4], student_portrait.require_sjm: true}
   intensive:
     artifact_target: curriculum_plan
     content_model: lesson_course
-    params: {assessments.required: [final], lesson_structure.lesson_hours: [4], lesson_structure.project_span: [2, 5]}
+    params: {program_types.kind: intensive, assessments.required: [final], lesson_structure.lesson_hours: [4], lesson_structure.project_span: [2, 5], student_portrait.require_sjm: true}
   master_class:
     artifact_target: curriculum_plan
     content_model: lesson_single
-    params: {lesson_structure.duration_minutes: 90}
+    params: {program_types.kind: master_class, assessments.required: [], lesson_structure.duration_minutes: 90, student_portrait.require_sjm: false}
 params:
+  audience_level.min_age: 7
   audience_level.assumed_known: none
+  audience_level.entry_diagnostics: true
+  content_sufficiency.words_per_part: [80, 180]
   voice.formality: warm_mentor

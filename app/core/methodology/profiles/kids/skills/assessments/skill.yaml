@@ -2,8 +2,17 @@ id: assessments
 title: Система контроля
 source: "Регламент 3.1.3"
 hooks:
+  - at: prompt.augment
+    stages: [generator.practice]
   - at: post.validate
     stages: [generator.evaluation]
 severity: hard
 applies_to: {artifact_family: [lesson]}
-params: {required: [entry, midterm, final]}
+params:
+  required: [entry, midterm, final]
+  aliases:
+    entry: [entry, входное, диагностика, стартовый уровень]
+    midterm: [midterm, промежуточное, середине программы, прогресс]
+    final: [final, итоговое, выходе, достижение результатов]
+instructions: instructions.md
+check: check.py

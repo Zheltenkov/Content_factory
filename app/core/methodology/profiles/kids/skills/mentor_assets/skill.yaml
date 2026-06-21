@@ -4,6 +4,14 @@ source: "Регламент 3.1.3"
 hooks:
   - at: prompt.augment
     stages: [generator.intro]
+  - at: post.validate
+    stages: [generator.evaluation]
 severity: soft
 applies_to: {artifact_family: [lesson]}
-params: {}
+params:
+  required_assets:
+    presentation: [presentation, slides, презентация, слайды]
+    mentor_guide: [mentor_guide, guide, методичка, наставник]
+  require_mentor_portrait: true
+instructions: instructions.md
+check: check.py

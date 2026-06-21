@@ -6,3 +6,5 @@ terminology: {branch: ветка, curriculum: УП}
 params:
   readme_structure.content_model: readme_cyclic
   readme_structure.naming: relaxed
+  content_sufficiency.theory_depth: extended_for_beginners
+  voice.formality: detailed_peer
