@@ -1,0 +1,9 @@
+id: voice
+title: Tone of Voice
+source: "Регламент 3.2.4"
+hooks:
+  - at: prompt.augment
+    stages: [generator.title_annotation, generator.intro, generator.theory, generator.practice]
+severity: soft
+params: {formality: peer}
+instructions: instructions.md

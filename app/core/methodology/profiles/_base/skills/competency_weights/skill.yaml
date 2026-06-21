@@ -1,0 +1,10 @@
+id: competency_weights
+title: Развесовка компетенций в УП
+source: "Регламент 3.1.2"
+hooks:
+  - at: pre.stage
+    stages: [curriculum.planner]
+requires: [reference.competencies, curriculum.projects]
+produces: [curriculum.competency_weights]
+severity: soft
+check: check.py

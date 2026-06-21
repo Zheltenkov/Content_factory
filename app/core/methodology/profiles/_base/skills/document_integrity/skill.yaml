@@ -1,0 +1,9 @@
+id: document_integrity
+title: Целостность документа
+source: "structural_criteria_v2 N.1-N.5"
+hooks:
+  - at: post.validate
+    stages: [generator.evaluation, checker.evaluation]
+severity: hard
+applies_to: {artifact_family: [readme, lesson, guide]}
+params: {check_tables: true}

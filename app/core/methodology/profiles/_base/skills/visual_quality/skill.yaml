@@ -1,0 +1,11 @@
+id: visual_quality
+title: Качество визуальных материалов
+source: "Регламент 3.2.5"
+hooks:
+  - at: prompt.augment
+    stages: [generator.theory, generator.practice]
+  - at: post.validate
+    stages: [generator.evaluation]
+severity: hard
+instructions: instructions.md
+check: check.py

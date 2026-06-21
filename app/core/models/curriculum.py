@@ -1,0 +1,163 @@
+"""Curriculum and UP contracts shared by reference, curriculum and generator modules."""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.core.models.artifacts import ArtifactRef
+from app.core.models.competency import CompetencyRef
+
+UPStatus = Literal["built", "deferred", "draft"]
+ProjectFormat = Literal["individual", "group", "pair", "workshop", "unknown"]
+
+
+def _split_text(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        values = value
+    else:
+        values = str(value).replace(";", "\n").splitlines()
+    return [item.strip(" \t-") for item in values if str(item).strip(" \t-")]
+
+
+class ProjectSummary(BaseModel):
+    """Compact project view used as neighboring context."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    order: int
+    title: str
+    description: str = ""
+    learning_outcomes: list[str] = Field(default_factory=list)
+    block_name: str | None = None
+    competency_refs: list[CompetencyRef] = Field(default_factory=list)
+
+
+class UPProject(BaseModel):
+    """One row/project in a curriculum skeleton."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    block: str = ""
+    block_goal: str = ""
+    order: int
+    title: str
+    description: str = ""
+    outcomes_know: list[str] = Field(default_factory=list)
+    outcomes_can: list[str] = Field(default_factory=list)
+    outcomes_skills: list[str] = Field(default_factory=list)
+    competency_refs: list[CompetencyRef] = Field(default_factory=list)
+    required_tools: list[str] = Field(default_factory=list)
+    required_software: list[str] = Field(default_factory=list)
+    materials: str = ""
+    storytelling: str = ""
+    format: ProjectFormat = "individual"
+    group_size: int = Field(default=1, ge=1)
+    hours_astro: float = Field(default=0.0, ge=0.0)
+    artifacts: list[ArtifactRef] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_curriculum_names(cls, data: Any) -> Any:
+        """Accept Spravochnik rows and old CG payloads without storing string skills."""
+        if not isinstance(data, dict):
+            return data
+        payload = dict(data)
+        if "competency_refs" not in payload:
+            raw = payload.pop("skills", None) or payload.pop("current_project_skills", None) or []
+            payload["competency_refs"] = [CompetencyRef.from_text(str(item)) for item in raw if str(item).strip()]
+        for key in ("outcomes_know", "outcomes_can", "outcomes_skills", "required_tools", "required_software"):
+            if key in payload:
+                payload[key] = _split_text(payload[key])
+        if payload.get("format") == "индивидуальный":
+            payload["format"] = "individual"
+        return payload
+
+    @field_validator("title")
+    @classmethod
+    def title_is_not_empty(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("project title must not be empty")
+        return value
+
+    @property
+    def learning_outcomes(self) -> list[str]:
+        return [*self.outcomes_know, *self.outcomes_can, *self.outcomes_skills]
+
+    def to_summary(self) -> ProjectSummary:
+        return ProjectSummary(
+            order=self.order,
+            title=self.title,
+            description=self.description,
+            learning_outcomes=self.learning_outcomes,
+            block_name=self.block or None,
+            competency_refs=self.competency_refs,
+        )
+
+
+class UPBlock(BaseModel):
+    """Thematic block inside an UP skeleton."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    code: str = "UNK"
+    goals: list[str] = Field(default_factory=list)
+    projects: list[UPProject] = Field(default_factory=list)
+
+    def all_learning_outcomes(self) -> list[str]:
+        seen: dict[str, None] = {}
+        for project in self.projects:
+            for outcome in project.learning_outcomes:
+                seen.setdefault(outcome, None)
+        return list(seen)
+
+
+class UPSkeleton(BaseModel):
+    """Typed boundary from curriculum planner to downstream generators."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: UPStatus = "draft"
+    title: str = "Черновик учебного плана"
+    direction: str = ""
+    version: str = "v1"
+    rows: list[UPProject] = Field(default_factory=list)
+    blocks: list[UPBlock] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def derive_blocks_from_rows(self) -> "UPSkeleton":
+        """Keep block and row views consistent while JSON stays compact."""
+        if self.blocks or not self.rows:
+            return self
+        grouped: dict[str, list[UPProject]] = {}
+        goals: dict[str, list[str]] = {}
+        for row in self.rows:
+            key = row.block or "Без блока"
+            grouped.setdefault(key, []).append(row)
+            if row.block_goal:
+                goals.setdefault(key, [])
+                if row.block_goal not in goals[key]:
+                    goals[key].append(row.block_goal)
+        self.blocks = [UPBlock(name=name, goals=goals.get(name, []), projects=projects) for name, projects in grouped.items()]
+        return self
+
+    def project_by_title(self, title: str) -> UPProject | None:
+        needle = title.casefold()
+        for project in self.rows:
+            if project.title.casefold() == needle:
+                return project
+        return None
+
+    def competency_ids(self) -> list[str]:
+        seen: dict[str, None] = {}
+        for project in self.rows:
+            for ref in project.competency_refs:
+                seen.setdefault(ref.competency_id, None)
+        return list(seen)
