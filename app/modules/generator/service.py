@@ -9,6 +9,7 @@ from typing import Any
 from app.core.models import CurriculumContext, GeneratedDoc
 from app.modules.curriculum.repo import CurriculumCatalogRepo
 from app.modules.generator.engine import EngineStage, GeneratorEngineResult, GeneratorMethodologyEngine
+from app.modules.generator.stages import head as head_stage
 
 EngineFactory = Callable[..., GeneratorMethodologyEngine]
 
@@ -56,6 +57,13 @@ class GeneratorService:
             [
                 EngineStage("curriculum.planner", lambda _ctx, _augment: {}),
                 EngineStage(
+                    "generator.head",
+                    head_stage.run,
+                    node_id="skeleton",
+                    outputs=("title", "annotation", "intro_section", "task_plan", "context_analysis", "markdown", "head"),
+                    gate_stage="skeleton",
+                ),
+                EngineStage(
                     "generator.finalize",
                     lambda ctx, _augment: _document_from_context(context, ctx, template_blocks),
                     node_id="finalize",
@@ -93,13 +101,14 @@ def _template_blocks(engine: GeneratorMethodologyEngine) -> str:
 
 
 def _document_from_context(context: CurriculumContext, engine_context: dict[str, Any], template_blocks: str) -> GeneratedDoc:
+    head_markdown = str(engine_context.get("markdown") or "").strip()
     markdown = "\n\n".join(
         part
         for part in [
-            f"# {context.current_project_title}",
-            _project_context_markdown(context),
-            _task_markdown(context, engine_context),
-            _checklist_markdown(),
+            head_markdown or f"# {context.current_project_title}",
+            _project_context_markdown(context, nested=bool(head_markdown)),
+            _task_markdown(context, engine_context, nested=bool(head_markdown)),
+            _checklist_markdown(nested=bool(head_markdown)),
             template_blocks,
         ]
         if part.strip()
@@ -118,16 +127,17 @@ def _document_from_context(context: CurriculumContext, engine_context: dict[str,
     )
 
 
-def _project_context_markdown(context: CurriculumContext) -> str:
+def _project_context_markdown(context: CurriculumContext, *, nested: bool = False) -> str:
     outcomes = context.current_project_learning_outcomes or ["Объяснить и применить ключевые действия проекта."]
     skills = context.current_project_skills or ["Практическая работа с задачей проекта."]
     tools = [*context.current_project_required_tools, *context.current_project_required_software]
     tool_line = ", ".join(tools) if tools else "инструменты не требуются"
     previous = ", ".join(project.title for project in context.previous_projects) or "это первый проект в блоке"
     next_items = ", ".join(project.title for project in context.next_projects) or "следующий проект не задан"
+    heading = "### Контекст проекта" if nested else "## Контекст проекта"
     return "\n".join(
         [
-            "## Контекст проекта",
+            heading,
             f"- Блок: {context.block_name}.",
             f"- Цели блока: {', '.join(context.block_goals) or 'цели блока не заданы'}.",
             f"- Описание: {context.current_project_description or 'описание проекта не задано'}.",
@@ -144,17 +154,21 @@ def _project_context_markdown(context: CurriculumContext) -> str:
     )
 
 
-def _task_markdown(context: CurriculumContext, engine_context: dict[str, Any]) -> str:
+def _task_markdown(context: CurriculumContext, engine_context: dict[str, Any], *, nested: bool = False) -> str:
     workload = engine_context.get("curriculum.workload_plan") or []
+    task_plan = engine_context.get("task_plan") if isinstance(engine_context.get("task_plan"), dict) else {}
     workload_line = ""
     if workload:
         first = workload[0]
         workload_line = f" Ориентир: {first.get('workload_hours')} часов, {first.get('reviews_required')} p2p-проверки."
+    elif task_plan:
+        workload_line = f" План: {task_plan.get('tasks_count')} задач уровня {task_plan.get('complexity')}."
     story = context.sjm_context or "Работай с учебным кейсом и фиксируй решения в репозитории."
     materials = context.additional_materials or "используй материалы, указанные в учебном плане."
+    heading = "### Практическое задание" if nested else "## Задание"
     return "\n".join(
         [
-            "## Задание",
+            heading,
             f"{story}{workload_line}",
             "",
             "1. Изучи контекст проекта и выдели ограничение, которое влияет на решение.",
@@ -165,8 +179,9 @@ def _task_markdown(context: CurriculumContext, engine_context: dict[str, Any]) -
     )
 
 
-def _checklist_markdown() -> str:
-    return """## check-list.yml
+def _checklist_markdown(*, nested: bool = False) -> str:
+    heading = "### check-list.yml" if nested else "## check-list.yml"
+    return f"""{heading}
 
 ```yaml
 checks:

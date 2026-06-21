@@ -42,6 +42,8 @@ def test_generator_e2e_uses_curriculum_plan_from_db() -> None:
     assert payload["document"]["project_id"] == "BE02_REST"
     assert payload["document"]["metadata"]["source"] == "curriculum_db"
     assert "REST API" in payload["document"]["markdown"]
+    assert "## Содержание" in payload["document"]["markdown"]
+    assert "## Глава 1. Введение и инструкция" in payload["document"]["markdown"]
     assert "check-list.yml" in payload["document"]["markdown"]
     assert payload["rubric_json"]["passed"] is True
     assert payload["gate_review"]["human_review_required"] is False
