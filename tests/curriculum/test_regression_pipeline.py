@@ -73,6 +73,38 @@ def test_offline_intake_preserves_dense_backend_brief_semantics() -> None:
     assert not any("8 часов" in name for name in accepted_names)
 
 
+def test_offline_program_brief_uses_explicit_must_include_areas_first() -> None:
+    result = run_catalog_pipeline(
+        """
+        Наименование продукта: Ветка основного обучения.
+        Целевая аудитория: Участники, которые хотят запустить собственный бизнес.
+        Продолжительность программы: 5-6 месяцев при нагрузке 20 часов в неделю.
+
+        Какие темы или компетенции должны быть обязательно включены в программу?
+        Обязательно должны быть включены следующие темы и компетенции:
+
+        выявление проблемы и понимание клиента;
+        исследование продукта и проверка гипотез;
+        базовая инженерная дисциплина: репозиторий, непрерывная интеграция, тесты, выпуск версий;
+        контроль качества результатов искусственного интеллекта, оценка данных, безопасность.
+
+        Требования к участникам, пререквизиты: программа доступна для освоения с нуля.
+        """
+    )
+
+    coverage = result.reports["coverage"]
+    accepted = [item for item in result.competencies if item.atomicity == "atomic" and item.status == "accepted"]
+    names = " ".join(item.canonical_name for item in accepted).casefold()
+
+    assert result.spec["must_include_areas_source"] == "explicit"
+    assert coverage["covered_count"] == 4
+    assert len(coverage["rows"]) == 4
+    assert "продолжительность программы" not in " ".join(coverage["areas"]).casefold()
+    assert len(accepted) >= 8
+    for marker in ("выявление проблемы", "проверка гипотез", "репозиторий", "качества"):
+        assert marker in names
+
+
 def test_skill_name_rules_do_not_embed_backend_spotcheck_repairs() -> None:
     rules_path = ROOT / "app/modules/curriculum/stages/skill_name_rules.yaml"
     payload = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
