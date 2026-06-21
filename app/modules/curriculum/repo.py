@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import difflib
+from functools import lru_cache
 import json
 import re
 import unicodedata
@@ -18,6 +19,7 @@ from typing import Any, Iterable, Iterator, Literal
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection, Engine
 
+from app.core.config import get_settings
 from app.core.models import Competency, CompetencyIndicator, UPProject, UPSkeleton
 
 CatalogStatus = Literal["active", "candidate", "deprecated"]
@@ -356,6 +358,26 @@ class CurriculumPlanSaveResult:
     project_count: int
 
 
+@dataclass(frozen=True)
+class CurriculumProjectRecord:
+    project_id: int
+    plan_id: int
+    row_number: int
+    project: UPProject
+
+
+@lru_cache
+def _default_engine() -> Engine:
+    settings = get_settings()
+    if not settings.database_url:
+        raise RuntimeError("DATABASE_URL is required for curriculum repository")
+    return sa.create_engine(_psycopg_url(settings.database_url), pool_pre_ping=True)
+
+
+def default_curriculum_repo() -> "CurriculumCatalogRepo":
+    return CurriculumCatalogRepo(_default_engine())
+
+
 def create_catalog_schema(bind: Engine | Connection) -> None:
     """Create the catalog table subset used by this repo in tests/dev DBs."""
     metadata.create_all(bind)
@@ -367,6 +389,10 @@ def normalize_catalog_key(value: object | None) -> str:
     text = unicodedata.normalize("NFKC", str(value or "")).casefold().replace("ё", "е")
     text = re.sub(r"[^0-9a-zа-я+ ]", " ", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _psycopg_url(url: str) -> str:
+    return "postgresql+psycopg://" + url.removeprefix("postgresql://") if url.startswith("postgresql://") else url
 
 
 class CurriculumCatalogRepo:
@@ -709,8 +735,35 @@ class CurriculumCatalogRepo:
                             total_workload_days=cumulative_days if workload_days is not None else _optional_float(project.metadata.get("total_workload_days")),
                         )
                     )
-                )
+            )
             return CurriculumPlanSaveResult(plan_id=plan_id, project_count=len(up.rows))
+
+    def list_curriculum_plans(
+        self,
+        *,
+        status: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, object]]:
+        with self._connect() as con:
+            stmt = CURRICULUM_PLAN.select().order_by(CURRICULUM_PLAN.c.updated_at.desc(), CURRICULUM_PLAN.c.id.desc()).limit(limit)
+            if status:
+                stmt = stmt.where(CURRICULUM_PLAN.c.status == status)
+            return [
+                {
+                    "plan_id": int(row["id"]),
+                    "status": row["status"],
+                    "title": row["title"],
+                    "direction": row["direction"],
+                    "version": row["version"],
+                    "source_policy": row["source_policy"],
+                    "total_blocks": int(row["total_blocks"] or 0),
+                    "total_projects": int(row["total_projects"] or 0),
+                    "total_hours": float(row["total_hours"] or 0.0),
+                    "updated_at": _iso_or_none(row["updated_at"]),
+                    "created_at": _iso_or_none(row["created_at"]),
+                }
+                for row in con.execute(stmt).mappings().all()
+            ]
 
     def load_curriculum_plan(self, plan_id: int) -> UPSkeleton | None:
         with self._connect() as con:
@@ -734,10 +787,104 @@ class CurriculumCatalogRepo:
                 metadata=metadata,
             )
 
+    def replace_curriculum_plan(
+        self,
+        plan_id: int,
+        up: UPSkeleton,
+        *,
+        profile_id: int | None = None,
+        source_policy: str | None = None,
+        author_ref: str | None = None,
+    ) -> bool:
+        with self._connect() as con:
+            existing = con.execute(CURRICULUM_PLAN.select().where(CURRICULUM_PLAN.c.id == plan_id)).mappings().first()
+            if existing is None:
+                return False
+            now = datetime.now(UTC)
+            con.execute(CURRICULUM_PROJECT.delete().where(CURRICULUM_PROJECT.c.plan_id == plan_id))
+            con.execute(
+                CURRICULUM_PLAN.update()
+                .where(CURRICULUM_PLAN.c.id == plan_id)
+                .values(
+                    profile_id=profile_id if profile_id is not None else existing["profile_id"],
+                    source_policy=source_policy or existing["source_policy"],
+                    status=up.status,
+                    title=up.title,
+                    direction=up.direction,
+                    version=up.version,
+                    author_ref=author_ref if author_ref is not None else existing["author_ref"],
+                    total_blocks=len(up.blocks),
+                    total_projects=len(up.rows),
+                    total_hours=sum(project.hours_astro for project in up.rows),
+                    metadata_json=up.metadata,
+                    payload_json=up.model_dump(mode="json"),
+                    updated_at=now,
+                )
+            )
+            self._insert_projects(con, plan_id, up.rows)
+            return True
+
     def delete_curriculum_plan(self, plan_id: int) -> bool:
         with self._connect() as con:
             result = con.execute(CURRICULUM_PLAN.delete().where(CURRICULUM_PLAN.c.id == plan_id))
             return result.rowcount > 0
+
+    def add_curriculum_project(self, plan_id: int, project: UPProject) -> CurriculumProjectRecord | None:
+        with self._connect() as con:
+            if con.execute(sa.select(CURRICULUM_PLAN.c.id).where(CURRICULUM_PLAN.c.id == plan_id)).scalar_one_or_none() is None:
+                return None
+            row_number = _next_int(con, CURRICULUM_PROJECT.c.row_number, CURRICULUM_PROJECT.c.plan_id == plan_id)
+            block_index, project_index = self._project_position(con, plan_id, project.block)
+            values = _project_values(
+                plan_id=plan_id,
+                row_number=row_number,
+                block_index=block_index,
+                project_index_in_block=project_index,
+                project=project,
+                total_workload_days=_optional_float(project.metadata.get("total_workload_days")),
+            )
+            project_id = _insert_id(con, CURRICULUM_PROJECT.insert().values(**values))
+            self._refresh_plan_summary(con, plan_id)
+            return CurriculumProjectRecord(project_id=project_id, plan_id=plan_id, row_number=row_number, project=project)
+
+    def get_curriculum_project(self, project_id: int) -> CurriculumProjectRecord | None:
+        with self._connect() as con:
+            row = con.execute(CURRICULUM_PROJECT.select().where(CURRICULUM_PROJECT.c.id == project_id)).mappings().first()
+            if row is None:
+                return None
+            return CurriculumProjectRecord(
+                project_id=int(row["id"]),
+                plan_id=int(row["plan_id"]),
+                row_number=int(row["row_number"]),
+                project=_project_from_row(row),
+            )
+
+    def update_curriculum_project(self, project_id: int, project: UPProject) -> CurriculumProjectRecord | None:
+        with self._connect() as con:
+            row = con.execute(CURRICULUM_PROJECT.select().where(CURRICULUM_PROJECT.c.id == project_id)).mappings().first()
+            if row is None:
+                return None
+            values = _project_values(
+                plan_id=int(row["plan_id"]),
+                row_number=int(row["row_number"]),
+                block_index=int(row["block_index"] or 0),
+                project_index_in_block=int(row["project_index_in_block"] or 0),
+                project=project,
+                total_workload_days=_optional_float(project.metadata.get("total_workload_days")),
+            )
+            values.pop("plan_id", None)
+            con.execute(CURRICULUM_PROJECT.update().where(CURRICULUM_PROJECT.c.id == project_id).values(**values))
+            self._refresh_plan_summary(con, int(row["plan_id"]))
+            return CurriculumProjectRecord(project_id=project_id, plan_id=int(row["plan_id"]), row_number=int(row["row_number"]), project=project)
+
+    def delete_curriculum_project(self, project_id: int) -> bool:
+        with self._connect() as con:
+            row = con.execute(sa.select(CURRICULUM_PROJECT.c.plan_id).where(CURRICULUM_PROJECT.c.id == project_id)).mappings().first()
+            if row is None:
+                return False
+            con.execute(CURRICULUM_PROJECT.delete().where(CURRICULUM_PROJECT.c.id == project_id))
+            self._refresh_plan_summary(con, int(row["plan_id"]))
+            return True
 
     def ensure_dimensions(self) -> None:
         with self._connect() as con:
@@ -752,6 +899,82 @@ class CurriculumCatalogRepo:
                 yield connection
         else:
             yield self.bind
+
+    def _insert_projects(self, con: Connection, plan_id: int, projects: list[UPProject]) -> None:
+        block_indexes: dict[str, int] = {}
+        block_counts: dict[str, int] = {}
+        cumulative_days = 0.0
+        for row_number, project in enumerate(sorted(projects, key=lambda item: item.order), start=1):
+            block_name = project.block or "Без блока"
+            block_indexes.setdefault(block_name, len(block_indexes) + 1)
+            block_counts[block_name] = block_counts.get(block_name, 0) + 1
+            workload_days = _optional_float(project.metadata.get("workload_days"))
+            if workload_days is not None:
+                cumulative_days += workload_days
+            con.execute(
+                CURRICULUM_PROJECT.insert().values(
+                    **_project_values(
+                        plan_id=plan_id,
+                        row_number=row_number,
+                        block_index=block_indexes[block_name],
+                        project_index_in_block=block_counts[block_name],
+                        project=project,
+                        total_workload_days=cumulative_days
+                        if workload_days is not None
+                        else _optional_float(project.metadata.get("total_workload_days")),
+                    )
+                )
+            )
+
+    def _project_position(self, con: Connection, plan_id: int, block_name: str) -> tuple[int, int]:
+        block = block_name or "Без блока"
+        rows = con.execute(
+            sa.select(CURRICULUM_PROJECT.c.block_name, CURRICULUM_PROJECT.c.block_index)
+            .where(CURRICULUM_PROJECT.c.plan_id == plan_id)
+            .order_by(CURRICULUM_PROJECT.c.row_number)
+        ).mappings().all()
+        block_indexes: dict[str, int] = {}
+        for row in rows:
+            existing_block = row["block_name"] or "Без блока"
+            block_indexes.setdefault(existing_block, int(row["block_index"] or len(block_indexes) + 1))
+        block_index = block_indexes.setdefault(block, len(block_indexes) + 1)
+        project_index = (
+            con.execute(
+                sa.select(sa.func.count())
+                .select_from(CURRICULUM_PROJECT)
+                .where(CURRICULUM_PROJECT.c.plan_id == plan_id, CURRICULUM_PROJECT.c.block_name == block_name)
+            ).scalar_one()
+            or 0
+        ) + 1
+        return block_index, int(project_index)
+
+    def _refresh_plan_summary(self, con: Connection, plan_id: int) -> None:
+        projects = con.execute(CURRICULUM_PROJECT.select().where(CURRICULUM_PROJECT.c.plan_id == plan_id)).mappings().all()
+        block_count = len({row["block_name"] or "Без блока" for row in projects})
+        total_hours = sum(float(row["workload_hours"] or 0.0) for row in projects)
+        plan = con.execute(CURRICULUM_PLAN.select().where(CURRICULUM_PLAN.c.id == plan_id)).mappings().first()
+        if plan is None:
+            return
+        rows = [_project_from_row(row) for row in sorted(projects, key=lambda item: (int(item["row_number"]), int(item["id"])))]
+        up = UPSkeleton(
+            status=plan["status"],
+            title=plan["title"],
+            direction=plan["direction"] or "",
+            version=plan["version"] or "v1",
+            rows=rows,
+            metadata=_json_object(plan["metadata_json"]),
+        )
+        con.execute(
+            CURRICULUM_PLAN.update()
+            .where(CURRICULUM_PLAN.c.id == plan_id)
+            .values(
+                total_blocks=block_count,
+                total_projects=len(projects),
+                total_hours=total_hours,
+                payload_json=up.model_dump(mode="json"),
+                updated_at=datetime.now(UTC),
+            )
+        )
 
     def _get_skill(self, con: Connection, skill_id: int) -> CatalogSkill | None:
         row = con.execute(SKILL.select().where(SKILL.c.id == skill_id)).mappings().first()
@@ -1145,6 +1368,10 @@ def _optional_int(value: object) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _iso_or_none(value: object) -> str | None:
+    return value.isoformat() if hasattr(value, "isoformat") else str(value) if value is not None else None
 
 
 def _best_fuzzy_match(
