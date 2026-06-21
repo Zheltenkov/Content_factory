@@ -1,0 +1,27 @@
+[project]
+name = "content-factory"
+version = "0.1.0"
+description = "Unified monorepo for content generation, checking, curriculum, translation, and reference modules."
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.12.0",
+    "fastapi>=0.104.0",
+    "psycopg[binary]>=3.1.0",
+    "sqlalchemy>=2.0.0",
+    "uvicorn[standard]>=0.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.23.0",
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"

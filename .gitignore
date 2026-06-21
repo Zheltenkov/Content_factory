@@ -10,6 +10,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+pytest-cache-files-*/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -32,6 +33,7 @@ Thumbs.db
 .idea/
 .vscode/
 .codex/
+.serena/
 
 # Logs and local data stores
 *.log
