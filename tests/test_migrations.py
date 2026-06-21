@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from importlib import import_module
 
 import pytest
 from alembic.config import Config
@@ -27,11 +28,24 @@ def _psycopg_url(url: str) -> str:
     return "postgresql+psycopg://" + url.removeprefix("postgresql://") if url.startswith("postgresql://") else url
 
 
-def test_alembic_chain_points_to_current_cg_head() -> None:
+def test_alembic_chain_points_to_current_head() -> None:
     script = ScriptDirectory.from_config(Config("alembic.ini"))
 
-    assert script.get_heads() == ["012"]
-    assert len(list(script.walk_revisions())) == 12
+    assert script.get_heads() == ["013"]
+    assert len(list(script.walk_revisions())) == 13
+
+
+def test_reference_catalog_revision_declares_key_tables() -> None:
+    migration = import_module("migrations.versions.013_add_reference_catalog_schema")
+
+    assert migration.KEY_CATALOG_TABLES <= set(migration.CATALOG_TABLES)
+    assert {
+        "source_workbook",
+        "skill_alias",
+        "ai_analysis_run",
+        "ai_analysis_suggestion",
+        "review_queue",
+    } <= set(migration.CATALOG_TABLES)
 
 
 def test_database_url_connects_when_postgres_is_available() -> None:
