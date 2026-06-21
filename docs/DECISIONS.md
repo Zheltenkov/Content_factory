@@ -112,6 +112,23 @@ alembic-цепочку на T0.4). Контракт `ProfilePackage`/`UPSkeleton
 
 ---
 
+## D6 — Ревизионная подсистема сохраняется
+
+**Контекст.** В `content_gen/methodology/` есть отдельная human-in-the-loop подсистема правок:
+`scoped_revision.py`, `assistant.py`, `change_request.py`, `checkpoint.py`. Это не часть gate:
+gate решает, что артефакт требует вмешательства, а revision loop управляет scoped-правкой,
+change request, checkpoint и rollback.
+
+**Решение.** Подсистема ревизий **переносится**, но не в T1.4. Для неё заведена отдельная задача
+W7.1: `core/methodology/revision/` + PG repo-адаптер. Gate остаётся deterministic review/policy
+слоем; revision loop подключается позже как downstream-механизм исполнения правок.
+
+**Обоснование.** Выбрасывание ревизий разрывает цикл `gate critical → human review → scoped fix →
+checkpoint/rollback`. Это production-функциональность, а не legacy-обвязка. Отдельная задача снимает
+риск молчаливой потери функционала и не раздувает core/gate.
+
+---
+
 ## Сводка: что закрыто, что подтвердить
 
 | # | Статус | Нужен твой факт |
@@ -121,6 +138,7 @@ alembic-цепочку на T0.4). Контракт `ProfilePackage`/`UPSkeleton
 | D3 часы | закрыто | `hours_band`, `xp_per_hour=10` против листа |
 | D4 жюри | правило+дефолт закрыты | слаги OpenRouter + GENERATOR_MODEL |
 | D5 справочник | закрыто | живой ли `viewer` в проде |
+| D6 ревизии | **закрыто полностью** | — |
 
 Ни один открытый пункт не блокирует волны 0 / 1 / M. D3 всплывает на волне 2, D4 — на волне 5,
-D5 — на T0.4.
+D5 — на T0.4, D6 — на W7.1.

@@ -101,7 +101,8 @@ MODULE = ModuleManifest(
 | разбросанные `_safe_json_extract` в агентах | `core/llm/structured.py` (новый) | ОДИН `complete_typed(prompt, schema)->BaseModel` с repair-retry. Локальные парсеры удаляются на волне 3 |
 | inline-промпты во всех агентах + стадиях | `core/llm/prompts/<area>/<name>@v1.md` | Механический вынос строк в файлы; версия из имени файла → в лог |
 | `content_gen/models/` (2 213) + `Spravochnik` skill-модели | `core/models/` | Слить две модели навыка в одну. `ProfilePackage`/`UPSkeleton` — здесь |
-| `content_gen/methodology/` (3 619) | `core/methodology/` | Перенос почти как есть (это сильная часть). Тонкая чистка дублей в trace |
+| `content_gen/methodology/gate.py` + harness | `core/methodology/gate/` + `core/methodology/{harness.py,rules.py}` | Gate/harness переносятся в волне 1: deterministic review, trace-friendly contracts, без знания о модулях |
+| `content_gen/methodology/{scoped_revision.py,assistant.py,change_request.py,checkpoint.py}` | `core/methodology/revision/` | Human-in-the-loop петля правок переносится отдельной задачей W7.1, чтобы не смешивать gate с механизмом ревизий и не потерять scoped revision/checkpoint |
 | `content_gen/config/` (317) + `thresholds` из ноутбука | `core/config/settings.py` + `thresholds.yaml` | **Единственный источник правды по порогам.** Пороги из `structural_criteria_v2` (`annotation_chars`, `readability_band`, `repetition_ratio_max`, …) переезжают сюда, синхронизируются с `CRITERIA.md` |
 
 ### 3.2 → `modules/generator/` (волны 3–4, лимит 10 000)
@@ -238,7 +239,7 @@ UI финальных метрик (`final-metrics-ui.png`) показывает
 | **3–4. generator/ + translator/** | Агенты худеют (промпты/парсинг наружу), 4 слоя оркестрации→`engine.py`, удалить Jaccard-граф, **генератор тянет `CurriculumContext` из БД**, перенос перевода | Генерация e2e на УП из БД даёт README ≥ прежнего качества; перевод doc+video работает; бюджет агентов соблюдён |
 | **5. checker/ (две оси)** | `signals.py` (единый), `structural.py` (из ноутбука, удалить section1-4 checkers), `didactic/` jury+debate, подключить обе оси к gate | Структурная ось ловит N.1–N.5 на эталонном «битом» README; дидактика даёт раздельный профиль; HARD-fail/abstain поднимают `human_review_required` |
 | **6. reference/ + UI-финал** | Свернуть `viewer/app.py` в модуль поверх общих таблиц, распилить `main.js`, финальная эстетика дашборда | Справочник читается/правится из общей БД; `main.js` < 1 500 на каркас; все 5 плиток рабочие |
-| **7. Петля и архив** | Reverse-extraction сверяется с каталогом (обратное извлечение → реконсиляция), архив legacy-репозиториев | Обратная связь замкнута; старые репо помечены archived; CI-гейты включены |
+| **7. Петля и архив** | Human-in-the-loop revision loop (scoped revision/change request/checkpoint), reverse-extraction сверяется с каталогом (обратное извлечение → реконсиляция), архив legacy-репозиториев | Правки проходят через change request + scoped revision + checkpoint/rollback; обратная связь замкнута; старые репо помечены archived; CI-гейты включены |
 
 ---
 
