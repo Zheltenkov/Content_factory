@@ -78,6 +78,16 @@ class ExtractedEntity(BaseModel):
     context: str
 
 
+class ExtractedCompetency(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    aliases: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
+    competency_id: int | None = None
+    match_type: str | None = None
+
+
 class ReconciliationIssue(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -93,6 +103,7 @@ class ReverseExtractionResult(BaseModel):
     normalized: NormalizedReadme
     partial_seed: PartialProjectSeed
     tasks: TasksExtractionResult
+    competencies: list[ExtractedCompetency] = Field(default_factory=list)
     entities: list[ExtractedEntity] = Field(default_factory=list)
     reconciliation: list[ReconciliationIssue] = Field(default_factory=list)
 
@@ -111,6 +122,7 @@ class ReverseExtractionService:
         repo: CurriculumCatalogRepo | None = None,
         source_ref: str = "reverse://readme",
         expected_tasks_count: int | None = None,
+        expected_competencies: list[str] | None = None,
         expected_skills: list[str] | None = None,
     ) -> ReverseExtractionResult:
         normalized = normalize_readme(markdown)
@@ -123,6 +135,7 @@ class ReverseExtractionService:
             normalized=normalized,
             partial_seed=partial_seed,
             tasks=tasks,
+            competencies=extract_competency_candidates(partial_seed),
             entities=extract_entities(normalized.raw_text),
         )
         if repo is not None:
@@ -131,6 +144,7 @@ class ReverseExtractionService:
                 repo,
                 source_ref=source_ref,
                 expected_tasks_count=expected_tasks_count,
+                expected_competencies=expected_competencies or [],
                 expected_skills=expected_skills or [],
             )
         return result
@@ -142,9 +156,44 @@ class ReverseExtractionService:
         *,
         source_ref: str,
         expected_tasks_count: int | None = None,
+        expected_competencies: list[str] | None = None,
         expected_skills: list[str] | None = None,
     ) -> list[ReconciliationIssue]:
         issues: list[ReconciliationIssue] = []
+        for competency in _merge_competencies(extraction.competencies, expected_competencies or []):
+            match = repo.find_competency_match(competency.title, aliases=competency.aliases)
+            if match is not None:
+                competency.competency_id = match.competency_id
+                competency.match_type = match.match_type
+            issue = ReconciliationIssue(
+                reason_code=f"{'reverse_extracted_competency' if match else 'reverse_missing_competency'}:{normalize_catalog_key(competency.title)[:64]}",
+                severity="info" if match else "warning",
+                details={
+                    "competency": competency.title,
+                    "aliases": competency.aliases,
+                    "evidence": competency.evidence,
+                    "source": source_ref,
+                    "match": None
+                    if match is None
+                    else {
+                        "competency_id": match.competency_id,
+                        "title": match.title,
+                        "status": match.status,
+                        "match_type": match.match_type,
+                        "matched_name": match.matched_name,
+                    },
+                },
+            )
+            issue.review_id = repo.enqueue_review(
+                entity_type="competency",
+                entity_id=match.competency_id if match else None,
+                source_ref=source_ref,
+                reason_code=issue.reason_code,
+                severity=issue.severity,
+                details=issue.details,
+            )
+            issues.append(issue)
+
         for skill in _unique_texts([*extraction.partial_seed.skills, *(expected_skills or [])]):
             if _skill_exists(repo, skill):
                 continue
@@ -307,6 +356,21 @@ def fallback_task_count(practice_text: str, initial_count: int | None = None) ->
     return TasksExtractionResult(tasks_count=initial_count or 0, confidence="low")
 
 
+def extract_competency_candidates(seed: PartialProjectSeed) -> list[ExtractedCompetency]:
+    candidates: list[ExtractedCompetency] = []
+    for outcome in _unique_texts(seed.learning_outcomes):
+        title = _clean_competency_title(outcome)
+        if title:
+            candidates.append(
+                ExtractedCompetency(
+                    title=title,
+                    aliases=[],
+                    evidence=[outcome],
+                )
+            )
+    return candidates
+
+
 def extract_entities(text: str, *, unit_id: str = "readme", file_path: str = "README.md") -> list[ExtractedEntity]:
     entities: list[ExtractedEntity] = []
     entities.extend(_extract_by_regex(unit_id, file_path, text, URL_RE, "link", validate_url=True))
@@ -392,6 +456,21 @@ def _unique_texts(values: list[str]) -> list[str]:
             seen.add(normalized)
             result.append(value.strip())
     return result
+
+
+def _merge_competencies(existing: list[ExtractedCompetency], expected: list[str]) -> list[ExtractedCompetency]:
+    by_normalized: dict[str, ExtractedCompetency] = {}
+    for item in [*existing, *(ExtractedCompetency(title=value) for value in expected)]:
+        normalized = normalize_catalog_key(item.title)
+        if normalized and normalized not in by_normalized:
+            by_normalized[normalized] = item
+    return list(by_normalized.values())
+
+
+def _clean_competency_title(value: str) -> str:
+    title = re.sub(r"\s+", " ", value or "").strip(" .;:-")
+    title = re.sub(r"^(?:студент|участник|выпускник)\s+(?:сможет|научится|умеет|должен)\s+", "", title, flags=re.IGNORECASE)
+    return title[:180].strip()
 
 
 def quote_around(text: str, start: int, end: int, radius: int = 80) -> str:

@@ -353,6 +353,15 @@ class CompetencyLinkResult:
 
 
 @dataclass(frozen=True)
+class CompetencyMatch:
+    competency_id: int
+    title: str
+    status: str
+    match_type: Literal["title", "provenance"]
+    matched_name: str
+
+
+@dataclass(frozen=True)
 class CurriculumPlanSaveResult:
     plan_id: int
     project_count: int
@@ -723,6 +732,65 @@ class CurriculumCatalogRepo:
             if status:
                 stmt = stmt.where(COMPETENCY.c.status == status)
             return [self._reference_competency_summary(con, row) for row in con.execute(stmt).mappings().all()]
+
+    def find_competency_match(
+        self,
+        title: str,
+        *,
+        aliases: Iterable[str] = (),
+    ) -> CompetencyMatch | None:
+        """Resolve a found competency without creating duplicates.
+
+        Matching is intentionally read-only: exact catalog title first, then
+        provenance titles (`profile_competency.title_in_source`) that came from
+        source workbooks or accepted intake rows.
+        """
+
+        names = [title, *aliases]
+        normalized_names = {normalize_catalog_key(name) for name in names if normalize_catalog_key(name)}
+        if not normalized_names:
+            return None
+        with self._connect() as con:
+            exact = (
+                con.execute(
+                    sa.select(COMPETENCY.c.id, COMPETENCY.c.title, COMPETENCY.c.status, COMPETENCY.c.normalized_title)
+                    .where(COMPETENCY.c.normalized_title.in_(normalized_names))
+                    .order_by(COMPETENCY.c.id)
+                    .limit(1)
+                )
+                .mappings()
+                .first()
+            )
+            if exact is not None:
+                return CompetencyMatch(
+                    competency_id=int(exact["id"]),
+                    title=str(exact["title"]),
+                    status=str(exact["status"]),
+                    match_type="title",
+                    matched_name=str(exact["title"]),
+                )
+
+            stmt = (
+                sa.select(
+                    COMPETENCY.c.id,
+                    COMPETENCY.c.title,
+                    COMPETENCY.c.status,
+                    PROFILE_COMPETENCY.c.title_in_source,
+                )
+                .select_from(PROFILE_COMPETENCY.join(COMPETENCY, COMPETENCY.c.id == PROFILE_COMPETENCY.c.competency_id))
+                .order_by(COMPETENCY.c.id, PROFILE_COMPETENCY.c.id)
+            )
+            for row in con.execute(stmt).mappings().all():
+                source_title = str(row["title_in_source"] or "")
+                if normalize_catalog_key(source_title) in normalized_names:
+                    return CompetencyMatch(
+                        competency_id=int(row["id"]),
+                        title=str(row["title"]),
+                        status=str(row["status"]),
+                        match_type="provenance",
+                        matched_name=source_title,
+                    )
+        return None
 
     def get_reference_competency(self, competency_id: int) -> dict[str, object] | None:
         """Return competency detail with skills, aliases, indicators and level cells."""

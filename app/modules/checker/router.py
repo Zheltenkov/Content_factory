@@ -32,6 +32,7 @@ class ReverseExtractRequest(BaseModel):
     markdown: str = Field(min_length=1)
     source_ref: str = "reverse://api"
     expected_tasks_count: int | None = Field(default=None, ge=0)
+    expected_competencies: list[str] = Field(default_factory=list)
     expected_skills: list[str] = Field(default_factory=list)
     persist_review: bool = False
 
@@ -51,5 +52,6 @@ def reverse_extract(payload: ReverseExtractRequest) -> ReverseExtractionResult:
         repo=repo,
         source_ref=payload.source_ref,
         expected_tasks_count=payload.expected_tasks_count,
+        expected_competencies=payload.expected_competencies,
         expected_skills=payload.expected_skills,
     )

@@ -44,7 +44,8 @@
   subtitle/transcript video workflow, artifacts download и panel. Дальше — **W6 UI parity**, затем
   W7.1 revision loop и архив. W7.2 reverse-extraction добавлен в `app/modules/checker/reverse_extraction`:
   README normalization, typed structure/tasks extraction, Proverka-style deterministic entity audit и reconciliation
-  в `review_queue` через `CurriculumCatalogRepo`.
+  в `review_queue` через `CurriculumCatalogRepo`; найденные competencies пишутся в review queue, а совпадение
+  по normalized title / provenance `title_in_source` линкуется к существующему `competency_id` без создания дубля.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
