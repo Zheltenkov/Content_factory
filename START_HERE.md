@@ -20,7 +20,11 @@
 - **W3–4 начата:** G1 orchestration spine перенесён в существующий `app/modules/generator/engine.py`
   (`domain.py` contracts, workflow checkpoints, skip/conditions, LLM trace hook, gate bridge).
   G2 head добавил `generator.head`: title/annotation/intro/planning scaffold с typed draft и deterministic guards.
-  Дальше — **G3 theory**.
+  G3 theory добавил `generator.theory`: structured theory parts, definitions/length/readability guards и замену Главы 2.
+  G4a practice core добавил `generator.practice`: задания, artifact chain, raw evidence specs и замену Главы 3.
+  G4b practice review добавил critic/repair-loop и optional bonus tasks поверх G4a.
+  G4c heavy generators добавил deterministic formula/table/Mermaid assets, dataset files и code examples.
+  Дальше — **G5 refine**.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -72,6 +76,14 @@ DoD: объём сопоставим с источником (ориентир ~
   LLM observability hook, harness/gate bridge in the existing engine.
 - [x] **G2** — generator head: title/annotation/intro/planning scaffold, TOC, project context analysis,
   typed LLM draft plus deterministic boundary guards.
+- [x] **G3** — generator theory: Chapter 2 generation, structured parts, definitions, length/readability guards,
+  no-code/static-instruction sanitizer and DB-backed e2e wiring.
+- [x] **G4a** — generator practice core: Chapter 3 tasks, artifact chain, raw input/evidence contracts,
+  P2P-observable criteria and DB-backed e2e wiring. Critic/repair/bonus postponed to G4b; heavy generators to G4c.
+- [x] **G4b** — generator practice review: deterministic + optional typed critic, task repair loop,
+  optional bonus tasks and DB-backed e2e metadata.
+- [x] **G4c** — generator heavy assets: deterministic formula/table/Mermaid blocks, dataset files
+  (csv/json/txt/md/xlsx) and code examples wired into DB-backed e2e metadata.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
@@ -131,8 +143,8 @@ DoD: e2e-тест активного профиля прогоняет prepare/a
 
 ### generator (G1…G5) и checker (C1…C4)
 Полная разбивка на под-задачи с заполненными промптами и путями ver1 — в **`docs/GENERATOR_CHECKER_PORT.md`**.
-Брать строго по одной. **Следующая: G3 theory** (`theory_*`, `theory_phase_executor`, `definitions_agent`,
-`length_agent`, `readability_agent`) поверх G1/G2. checker — помни: в основном НЕ порт
+Брать строго по одной. **Следующая: G5 refine** (`content_editor`, `quality_gate`,
+`enhancement_manager`, `enhancement_planner`, `regeneration`) поверх G1-G4c. checker — помни: в основном НЕ порт
 (rubric заменяется скиллами), типы промптов там разные.
 
 ### Волны 2 (УП), 6 (UI), 7 (петля)

@@ -6,10 +6,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from app.core.models import CurriculumContext, GeneratedDoc
+from app.core.models import ArtifactRef, CurriculumContext, GeneratedDoc
 from app.modules.curriculum.repo import CurriculumCatalogRepo
 from app.modules.generator.engine import EngineStage, GeneratorEngineResult, GeneratorMethodologyEngine
 from app.modules.generator.stages import head as head_stage
+from app.modules.generator.stages import generators as generators_stage
+from app.modules.generator.stages import practice as practice_stage
+from app.modules.generator.stages import practice_review as practice_review_stage
+from app.modules.generator.stages import theory as theory_stage
 
 EngineFactory = Callable[..., GeneratorMethodologyEngine]
 
@@ -64,6 +68,38 @@ class GeneratorService:
                     gate_stage="skeleton",
                 ),
                 EngineStage(
+                    "generator.theory",
+                    theory_stage.run,
+                    node_id="theory",
+                    inputs=("curriculum_context", "markdown", "task_plan", "context_analysis"),
+                    outputs=("markdown", "theory_parts", "theory", "theory_warnings", "theory_issues"),
+                    gate_stage="theory",
+                ),
+                EngineStage(
+                    "generator.practice",
+                    practice_stage.run,
+                    node_id="practice",
+                    inputs=("curriculum_context", "markdown", "task_plan", "theory_parts", "artifact_chain_plan"),
+                    outputs=("markdown", "practice_tasks", "artifact_chain_plan", "evidence_specs", "dataset_files"),
+                    gate_stage="practice",
+                ),
+                EngineStage(
+                    "generator.practice_review",
+                    practice_review_stage.run,
+                    node_id="practice",
+                    inputs=("curriculum_context", "markdown", "practice_tasks", "theory_parts", "artifact_chain_plan"),
+                    outputs=("markdown", "practice_tasks", "bonus_tasks", "practice_critic_issues", "practice_repaired_issue_count"),
+                    gate_stage="practice",
+                ),
+                EngineStage(
+                    "generator.generators",
+                    generators_stage.run,
+                    node_id="generators",
+                    inputs=("curriculum_context", "markdown", "practice_tasks", "theory_parts", "evidence_specs", "artifact_chain_plan"),
+                    outputs=("markdown", "generated_assets", "formula_assets", "dataset_files", "code_examples", "artifacts"),
+                    gate_stage="practice",
+                ),
+                EngineStage(
                     "generator.finalize",
                     lambda ctx, _augment: _document_from_context(context, ctx, template_blocks),
                     node_id="finalize",
@@ -102,12 +138,13 @@ def _template_blocks(engine: GeneratorMethodologyEngine) -> str:
 
 def _document_from_context(context: CurriculumContext, engine_context: dict[str, Any], template_blocks: str) -> GeneratedDoc:
     head_markdown = str(engine_context.get("markdown") or "").strip()
+    has_practice = bool(engine_context.get("practice_tasks"))
     markdown = "\n\n".join(
         part
         for part in [
             head_markdown or f"# {context.current_project_title}",
             _project_context_markdown(context, nested=bool(head_markdown)),
-            _task_markdown(context, engine_context, nested=bool(head_markdown)),
+            "" if has_practice else _task_markdown(context, engine_context, nested=bool(head_markdown)),
             _checklist_markdown(nested=bool(head_markdown)),
             template_blocks,
         ]
@@ -115,6 +152,7 @@ def _document_from_context(context: CurriculumContext, engine_context: dict[str,
     )
     return GeneratedDoc(
         markdown=markdown,
+        artifacts=_artifact_refs(engine_context.get("artifacts")),
         project_id=context.current_project_platform_name or context.current_project_title,
         metadata={
             "source": "curriculum_db",
@@ -123,8 +161,31 @@ def _document_from_context(context: CurriculumContext, engine_context: dict[str,
             "artifact_target": "readme_project",
             "template_blocks_required": True,
             "curriculum_context": context.model_dump(mode="json"),
+            "theory_parts": engine_context.get("theory_parts") or [],
+            "practice_tasks": engine_context.get("practice_tasks") or [],
+            "bonus_tasks": engine_context.get("bonus_tasks") or [],
+            "practice_critic_issues": engine_context.get("practice_critic_issues") or [],
+            "practice_repaired_issue_count": engine_context.get("practice_repaired_issue_count") or 0,
+            "artifact_chain_plan": engine_context.get("artifact_chain_plan") or {},
+            "evidence_specs": engine_context.get("evidence_specs") or [],
+            "generated_assets": engine_context.get("generated_assets") or {},
+            "formula_assets": engine_context.get("formula_assets") or {},
+            "dataset_files": engine_context.get("dataset_files") or [],
+            "code_examples": engine_context.get("code_examples") or [],
         },
     )
+
+
+def _artifact_refs(raw: Any) -> list[ArtifactRef]:
+    if not isinstance(raw, list):
+        return []
+    refs: list[ArtifactRef] = []
+    for item in raw:
+        try:
+            refs.append(item if isinstance(item, ArtifactRef) else ArtifactRef.model_validate(item))
+        except Exception:
+            continue
+    return refs
 
 
 def _project_context_markdown(context: CurriculumContext, *, nested: bool = False) -> str:

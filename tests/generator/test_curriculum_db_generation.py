@@ -44,7 +44,21 @@ def test_generator_e2e_uses_curriculum_plan_from_db() -> None:
     assert "REST API" in payload["document"]["markdown"]
     assert "## Содержание" in payload["document"]["markdown"]
     assert "## Глава 1. Введение и инструкция" in payload["document"]["markdown"]
+    assert "## Глава 2. Теория" in payload["document"]["markdown"]
+    assert "### 2.1." in payload["document"]["markdown"]
+    assert "## Глава 3. Практика" in payload["document"]["markdown"]
+    assert "### Задание 1." in payload["document"]["markdown"]
     assert "check-list.yml" in payload["document"]["markdown"]
+    assert payload["document"]["metadata"]["theory_parts"]
+    assert payload["document"]["metadata"]["practice_tasks"]
+    assert payload["document"]["metadata"]["practice_tasks"][0]["artifact_location"].endswith("/task-01/README.md")
+    assert "practice_critic_issues" in payload["document"]["metadata"]
+    assert "practice_repaired_issue_count" in payload["document"]["metadata"]
+    assert payload["document"]["metadata"]["generated_assets"]["formulas"]
+    assert payload["document"]["metadata"]["formula_assets"]["tables"]
+    assert payload["document"]["metadata"]["dataset_files"]
+    assert payload["document"]["metadata"]["code_examples"]
+    assert payload["document"]["artifacts"]
     assert payload["rubric_json"]["passed"] is True
     assert payload["gate_review"]["human_review_required"] is False
 
