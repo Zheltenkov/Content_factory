@@ -37,7 +37,10 @@
   generic dashboard navigation по `ui_panel`, reference panel и базовые module panels. Curriculum panel уже готова
   из T2.6; UI parity строит 4 панели, а U7 проверяет 5/5 плиток. Подробный порядок R1/U1–U7 —
   `docs/W6_UI_PORT.md`.
-  Дальше — **W6 UI parity**, реальный порт translator doc+video, затем W7 петля + архив.
+  W7.3 CI-гейты выдернуты вперёд: `scripts/ci/check_line_budget.py`,
+  `scripts/ci/check_grep_gates.py`, `scripts/ci/check_duplicates.py` и GitHub Actions workflow
+  уже включают budgets/grep/duplicates перед оставшимися портами.
+  Дальше — **W6 UI parity**, реальный порт translator doc+video, затем W7.1 revision loop и архив.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -170,7 +173,8 @@ DoD: e2e-тест активного профиля прогоняет prepare/a
 
 ### generator (G1…G5) и checker (C1…C4)
 Полная разбивка на под-задачи с заполненными промптами и путями ver1 — в **`docs/GENERATOR_CHECKER_PORT.md`**.
-G1–G5 и C1–C4 закрыты. W6 reference backend + shell сделан; UI parity не закрыта thin-панелями.
+G1–G5 и C1–C4 закрыты. W7.3 CI-гейты включены раньше финальной волны, чтобы дальше budgets/grep/duplicates
+ловились автоматически. W6 reference backend + shell сделан; UI parity не закрыта thin-панелями.
 checker — помни: в основном НЕ порт
 (rubric заменяется скиллами), типы промптов там разные.
 
