@@ -90,6 +90,28 @@ def test_reverse_reconciliation_links_competency_by_provenance_without_duplicate
     assert repo.reference_summary()["competencies"] == 1
 
 
+def test_reverse_reconciliation_links_competency_by_alias_without_duplicate() -> None:
+    service = ReverseExtractionService(client_factory=lambda: _unused_llm())
+    repo = _repo()
+    link = repo.save_competency(_competency(), source_note="pytest:reverse")
+    assert link.competency_id is not None
+    extraction = service.extract(_readme(), client=_unused_llm())
+    extraction.partial_seed.skills = []
+    extraction.competencies = [
+        ExtractedCompetency(title="Компетенция backend-сервиса", aliases=["Backend API", "REST API design"])
+    ]
+
+    issues = service.reconcile_with_catalog(extraction, repo, source_ref="generator://run/alias")
+    reviews = repo.list_review_queue(status="open")
+    competency_issue = next(issue for issue in issues if issue.reason_code.startswith("reverse_extracted_competency"))
+
+    assert competency_issue.details["match"]["competency_id"] == link.competency_id
+    assert competency_issue.details["match"]["match_type"] == "alias"
+    assert not any(issue.reason_code.startswith("reverse_missing_competency") for issue in issues)
+    assert any(row["entity_type"] == "competency" and row["entity_id"] == link.competency_id for row in reviews)
+    assert repo.reference_summary()["competencies"] == 1
+
+
 def test_reverse_extract_endpoint_without_persist_does_not_require_database() -> None:
     client = TestClient(create_app())
 

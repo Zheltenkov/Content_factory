@@ -357,7 +357,7 @@ class CompetencyMatch:
     competency_id: int
     title: str
     status: str
-    match_type: Literal["title", "provenance"]
+    match_type: Literal["title", "alias", "provenance"]
     matched_name: str
 
 
@@ -746,29 +746,58 @@ class CurriculumCatalogRepo:
         source workbooks or accepted intake rows.
         """
 
-        names = [title, *aliases]
-        normalized_names = {normalize_catalog_key(name) for name in names if normalize_catalog_key(name)}
+        primary_normalized = normalize_catalog_key(title)
+        alias_names = [alias for alias in aliases if normalize_catalog_key(alias)]
+        alias_normalized = {normalize_catalog_key(alias) for alias in alias_names}
+        normalized_names = {name for name in [primary_normalized, *alias_normalized] if name}
         if not normalized_names:
             return None
+        normalized_to_name = {
+            normalize_catalog_key(name): name
+            for name in [title, *alias_names]
+            if normalize_catalog_key(name)
+        }
         with self._connect() as con:
-            exact = (
-                con.execute(
-                    sa.select(COMPETENCY.c.id, COMPETENCY.c.title, COMPETENCY.c.status, COMPETENCY.c.normalized_title)
-                    .where(COMPETENCY.c.normalized_title.in_(normalized_names))
-                    .order_by(COMPETENCY.c.id)
-                    .limit(1)
-                )
+            exact_stmt = sa.select(
+                COMPETENCY.c.id,
+                COMPETENCY.c.title,
+                COMPETENCY.c.status,
+                COMPETENCY.c.normalized_title,
+            )
+            exact_title = (
+                con.execute(exact_stmt.where(COMPETENCY.c.normalized_title == primary_normalized).limit(1))
                 .mappings()
                 .first()
+                if primary_normalized
+                else None
             )
-            if exact is not None:
+            if exact_title is not None:
                 return CompetencyMatch(
-                    competency_id=int(exact["id"]),
-                    title=str(exact["title"]),
-                    status=str(exact["status"]),
+                    competency_id=int(exact_title["id"]),
+                    title=str(exact_title["title"]),
+                    status=str(exact_title["status"]),
                     match_type="title",
-                    matched_name=str(exact["title"]),
+                    matched_name=str(exact_title["title"]),
                 )
+            if alias_normalized:
+                exact_alias = (
+                    con.execute(
+                        exact_stmt.where(COMPETENCY.c.normalized_title.in_(list(alias_normalized)))
+                        .order_by(COMPETENCY.c.id)
+                        .limit(1)
+                    )
+                    .mappings()
+                    .first()
+                )
+                if exact_alias is not None:
+                    normalized_title = str(exact_alias["normalized_title"])
+                    return CompetencyMatch(
+                        competency_id=int(exact_alias["id"]),
+                        title=str(exact_alias["title"]),
+                        status=str(exact_alias["status"]),
+                        match_type="alias",
+                        matched_name=normalized_to_name.get(normalized_title, str(exact_alias["title"])),
+                    )
 
             stmt = (
                 sa.select(
