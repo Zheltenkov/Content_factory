@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import json
-import re
 import statistics
-from collections import Counter
 from collections.abc import Callable
-from importlib import import_module
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -15,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.core.config import get_thresholds
 from app.core.llm import StructuredPrompt, complete_typed, load_prompt
 from app.core.llm.client import create_llm_client
+from app.modules.checker.signals import collect_signals as collect_checker_signals
 from app.modules.checker.didactic.debate import DebateResult, run_debate
 
 ClientFactory = Callable[[str], Any]
@@ -264,21 +262,10 @@ def juror_score(
 
 
 def collect_signals(markdown: str) -> dict[str, Any]:
-    """Use C1 signals.py when present; otherwise keep the notebook mock path usable."""
+    """Return the unified C1 signal payload as JSON-compatible data."""
 
-    try:
-        module = import_module("app.modules.checker.signals")
-    except ModuleNotFoundError:
-        return _fallback_signals(markdown)
-    for name in ("collect_signals", "extract_signals", "analyze", "scan"):
-        func = getattr(module, name, None)
-        if callable(func):
-            try:
-                result = func(markdown)
-            except TypeError:
-                continue
-            return result.model_dump(mode="json") if isinstance(result, BaseModel) else dict(result or {})
-    return _fallback_signals(markdown)
+    result = collect_checker_signals(markdown)
+    return result.model_dump(mode="json") if isinstance(result, BaseModel) else dict(result or {})
 
 
 def run(markdown: str, **kwargs: Any) -> DidacticQualityReport:
@@ -349,61 +336,6 @@ def _heuristic_verdict(dim_id: str, signals: dict[str, Any]) -> JurorVerdict:
         score, rationale = 3.1, "Теория частично поддерживает практику."
     evidence = [f"repetition_ratio={rep}", f"near_dup={near_dup}", f"examples={examples}"]
     return JurorVerdict(score=round(max(1.0, min(5.0, score)), 2), rationale=rationale, evidence=evidence)
-
-
-def _fallback_signals(markdown: str) -> dict[str, Any]:
-    sentences = _sentences(markdown)
-    near_dup = _near_duplicate_pairs(sentences)
-    diagrams = _diagram_topic_match(markdown)
-    return {
-        "repetition_ratio": round(_repetition_ratio(markdown), 3),
-        "near_dup": len(near_dup),
-        "near_dup_examples": near_dup[:2],
-        "broken_tables": len([line for line in markdown.splitlines() if line.count("|") >= 2 and len(line) > 200]),
-        "diagram_match_avg": round(sum(diagrams) / len(diagrams), 3) if diagrams else 1.0,
-        "example_count": len(re.findall(r"\*\*Пример", markdown)),
-        "directive_hits": len(re.findall(r"\b(сделай|нажми|введите|скопируй|выполни шаг)\b", markdown.lower())),
-    }
-
-
-def _sentences(text: str) -> list[str]:
-    text = re.sub(r"```.*?```", " ", text, flags=re.S)
-    text = re.sub(r"<[^>]+>", " ", text)
-    return [item.strip() for item in re.split(r"(?<=[.!?])\s+", text) if len(item.strip()) > 25]
-
-
-def _repetition_ratio(text: str, n: int = 8) -> float:
-    words = re.findall(r"\w+", text.lower())
-    grams = [" ".join(words[index : index + n]) for index in range(len(words) - n + 1)]
-    if not grams:
-        return 0.0
-    counts = Counter(grams)
-    return sum(value for value in counts.values() if value > 1) / len(grams)
-
-
-def _near_duplicate_pairs(sentences: list[str], threshold: float = 0.7, cap: int = 40) -> list[tuple[str, str]]:
-    sets = [set(re.findall(r"\w+", sentence.lower())) for sentence in sentences]
-    pairs: list[tuple[str, str]] = []
-    for left in range(len(sets)):
-        for right in range(left + 1, len(sets)):
-            a, b = sets[left], sets[right]
-            if a and b and len(a & b) / len(a | b) >= threshold:
-                pairs.append((sentences[left][:80], sentences[right][:80]))
-                if len(pairs) >= cap:
-                    return pairs
-    return pairs
-
-
-def _diagram_topic_match(markdown: str) -> list[float]:
-    matches: list[float] = []
-    for match in re.finditer(r"```mermaid(.*?)```", markdown, flags=re.S):
-        heading = None
-        for candidate in re.finditer(r"^#{2,3}\s+(.+)$", markdown[: match.start()], flags=re.M):
-            heading = candidate.group(1)
-        nodes = set(re.findall(r"[А-Яа-яЁё]{4,}", match.group(1).lower()))
-        heading_words = set(re.findall(r"[А-Яа-яЁё]{4,}", (heading or "").lower()))
-        matches.append(len(nodes & heading_words) / len(nodes | heading_words) if nodes or heading_words else 0.0)
-    return matches
 
 
 def _unique(values: Any) -> list[str]:
