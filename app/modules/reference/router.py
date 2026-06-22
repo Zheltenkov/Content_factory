@@ -105,6 +105,17 @@ def list_profiles(
     return service.profiles(include_service=include_service, limit=limit)
 
 
+@router.get("/profiles/{profile_id}")
+def get_profile(
+    profile_id: int,
+    service: ReferenceService = Depends(get_reference_service),
+) -> dict[str, object]:
+    profile = service.profile(profile_id)
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="profile not found")
+    return profile
+
+
 @router.get("/reviews")
 def list_reviews(
     status_filter: ReviewStatus | Literal["all"] = "open",

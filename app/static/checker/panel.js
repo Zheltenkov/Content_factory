@@ -3,11 +3,13 @@ const markdownInput = document.getElementById("markdownInput");
 const statusLine = document.getElementById("checkerStatus");
 const summary = document.getElementById("checkerSummary");
 const output = document.getElementById("checkerOutput");
+const preview = document.getElementById("checkerPreview");
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   statusLine.textContent = "Проверка...";
   output.textContent = "";
+  await renderMarkdownPreview(preview, markdownInput.value, "README пуст.");
   const response = await fetch("/checker/evaluate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -28,3 +30,12 @@ form.addEventListener("submit", async (event) => {
   output.textContent = JSON.stringify(issues, null, 2);
   statusLine.textContent = "Готово";
 });
+
+async function renderMarkdownPreview(target, markdown, emptyMessage) {
+  if (!target) return;
+  if (window.ContentFactoryMarkdown) {
+    await window.ContentFactoryMarkdown.renderMarkdown(target, markdown, { emptyMessage });
+    return;
+  }
+  target.textContent = markdown || emptyMessage || "";
+}

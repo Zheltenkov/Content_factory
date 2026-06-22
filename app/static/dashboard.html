@@ -14,12 +14,6 @@
       </header>
       <section class="module-grid" aria-label="Модули">{{ module_tiles }}</section>
     </main>
-    <script>
-      document.addEventListener("click", (event) => {
-        const tile = event.target.closest(".module-tile");
-        if (!tile) return;
-        if (tile.dataset.panel) window.location.href = `/static/${tile.dataset.panel}`;
-      });
-    </script>
+    <script src="/static/shared/shell.js"></script>
   </body>
 </html>

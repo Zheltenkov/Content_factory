@@ -7,35 +7,39 @@ from sqlalchemy.pool import StaticPool
 from app.core.models import UPProject, UPSkeleton
 from app.main import create_app
 from app.modules.curriculum.repo import CurriculumCatalogRepo, create_catalog_schema
+from app.modules.curriculum.router import get_curriculum_repo
 from app.modules.generator.router import get_generator_repo
 
 
 def test_generator_e2e_uses_curriculum_plan_from_db() -> None:
     repo = _repo()
-    saved = repo.save_curriculum_plan(
-        UPSkeleton(
-            status="built",
-            title="Backend curriculum",
-            direction="Backend",
-            rows=[
-                _project(1, "HTTP intro", block="API"),
-                _project(2, "REST API", block="API", platform_name="BE02_REST"),
-                _project(3, "Docker deploy", block="Deploy"),
-            ],
-        )
+    plan = UPSkeleton(
+        status="built",
+        title="Backend curriculum",
+        direction="Backend",
+        rows=[
+            _project(1, "HTTP intro", block="API"),
+            _project(2, "REST API", block="API", platform_name="BE02_REST"),
+            _project(3, "Docker deploy", block="Deploy"),
+        ],
     )
     app = create_app()
+    app.dependency_overrides[get_curriculum_repo] = lambda: repo
     app.dependency_overrides[get_generator_repo] = lambda: repo
     client = TestClient(app)
 
+    created = client.post("/curriculum/plans", json={"plan": plan.model_dump(mode="json"), "author_ref": "generator-e2e"})
+    assert created.status_code == 201, created.text
+    plan_id = created.json()["plan_id"]
+
     response = client.post(
         "/generator/runs/from-curriculum",
-        json={"plan_id": saved.plan_id, "project_order": 2},
+        json={"plan_id": plan_id, "project_order": 2},
     )
 
     assert response.status_code == 200, response.text
     payload = response.json()
-    assert payload["context"]["plan_id"] == saved.plan_id
+    assert payload["context"]["plan_id"] == plan_id
     assert payload["context"]["current_project_title"] == "REST API"
     assert payload["context"]["previous_projects"][0]["title"] == "HTTP intro"
     assert payload["context"]["next_block_projects"][0]["title"] == "Docker deploy"

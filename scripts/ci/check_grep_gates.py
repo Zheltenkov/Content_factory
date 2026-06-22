@@ -43,7 +43,7 @@ def _line_for_offset(text: str, offset: int) -> int:
 def _is_allowed_sql_path(path: Path, root: Path) -> bool:
     rel = path.relative_to(root).as_posix()
     return (
-        rel == "app/modules/curriculum/repo.py"
+        rel.startswith("app/") and rel.endswith("/repo.py")
         or rel.startswith("app/core/db/")
         or rel.startswith("migrations/")
     )

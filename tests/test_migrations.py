@@ -31,8 +31,8 @@ def _psycopg_url(url: str) -> str:
 def test_alembic_chain_points_to_current_head() -> None:
     script = ScriptDirectory.from_config(Config("alembic.ini"))
 
-    assert script.get_heads() == ["014"]
-    assert len(list(script.walk_revisions())) == 14
+    assert script.get_heads() == ["015"]
+    assert len(list(script.walk_revisions())) == 15
 
 
 def test_reference_catalog_revision_declares_key_tables() -> None:
@@ -92,6 +92,16 @@ def test_curriculum_plan_revision_declares_alias_columns() -> None:
         "platform_name",
         "gitlab_link",
     } <= set(migration.CURRICULUM_PROJECT_COLUMNS)
+
+
+def test_methodology_revision_loop_declares_key_tables() -> None:
+    migration = import_module("migrations.versions.015_add_methodology_revision_loop")
+
+    assert migration.REVISION_TABLES == {
+        "methodology_revision_session",
+        "methodology_revision_checkpoint",
+        "methodology_revision_change_request",
+    }
 
 
 def test_database_url_connects_when_postgres_is_available() -> None:

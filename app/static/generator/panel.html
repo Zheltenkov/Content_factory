@@ -11,25 +11,81 @@
       <header class="workbench-header">
         <a class="back-link" href="/">Content Factory</a>
         <h1>Генератор</h1>
+        <nav class="toolbar" aria-label="Связанные модули">
+          <a class="btn" href="/static/curriculum/panel.html">Учебные планы</a>
+          <a class="btn" href="/static/checker/panel.html">Проверка</a>
+        </nav>
       </header>
-      <section class="tool-grid">
+
+      <section class="tool-grid generator-layout">
         <form id="generatorForm" class="editor-panel">
+          <h2>Источник из БД</h2>
           <label>
             Учебный план
             <select id="planSelect"></select>
           </label>
-          <label>
-            Номер проекта
-            <input id="projectOrder" type="number" min="1" value="1" />
-          </label>
+          <div class="form-row two">
+            <label>
+              Блок
+              <select id="blockSelect"></select>
+            </label>
+            <label>
+              Проект
+              <select id="projectSelect"></select>
+            </label>
+          </div>
+          <div class="form-row two">
+            <label>
+              Профиль
+              <select id="profileSelect">
+                <option value="_base">base</option>
+                <option value="kids">kids</option>
+                <option value="commerce">commerce</option>
+              </select>
+            </label>
+            <label>
+              Тип программы
+              <input id="programType" type="text" placeholder="optional" />
+            </label>
+          </div>
+          <div id="projectSummary" class="empty-inline">Загрузка учебных планов...</div>
           <button type="submit">Сгенерировать README</button>
           <div id="generatorStatus" class="status-line"></div>
         </form>
-        <section class="editor-panel">
-          <pre id="generatorOutput" class="output-preview"></pre>
+
+        <aside class="side-panel">
+          <h2>Запуск</h2>
+          <div class="progress-track" aria-hidden="true">
+            <div id="generatorProgress" class="progress-bar"></div>
+          </div>
+          <div id="generatorTimeline" class="run-timeline"></div>
+          <div id="generatorMetrics" class="metrics-grid"></div>
+        </aside>
+      </section>
+
+      <section class="editor-panel generator-result-panel">
+        <div class="tab-list" role="tablist" aria-label="Результат генерации">
+          <button class="tab-button active" type="button" data-tab-target="generatorReadme" aria-selected="true">README</button>
+          <button class="tab-button" type="button" data-tab-target="generatorMetadata" aria-selected="false">Контекст</button>
+          <button class="tab-button" type="button" data-tab-target="generatorIssues" aria-selected="false">Проверки</button>
+          <button class="tab-button" type="button" data-tab-target="generatorArtifacts" aria-selected="false">Артефакты</button>
+        </div>
+        <section id="generatorReadme" class="tab-content active" role="tabpanel">
+          <article id="generatorOutput" class="markdown-preview output-preview"></article>
+        </section>
+        <section id="generatorMetadata" class="tab-content" role="tabpanel" hidden>
+          <div id="generatorMetadataView"></div>
+        </section>
+        <section id="generatorIssues" class="tab-content" role="tabpanel" hidden>
+          <div id="generatorIssuesView"></div>
+        </section>
+        <section id="generatorArtifacts" class="tab-content" role="tabpanel" hidden>
+          <div id="generatorArtifactsView"></div>
         </section>
       </section>
     </main>
+    <script src="/static/shared/shell.js"></script>
+    <script src="/static/shared/markdown.js"></script>
     <script src="/static/generator/panel.js"></script>
   </body>
 </html>

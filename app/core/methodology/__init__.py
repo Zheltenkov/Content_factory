@@ -8,12 +8,26 @@ from app.core.methodology.gate import (
     StageReviewIssue,
     StageReviewResult,
 )
+from app.core.methodology.revision import (
+    HumanApprovalCheckpoint,
+    HumanApprovalCheckpointPolicy,
+    MethodologistChangeRequest,
+    MethodologyAssistantCommandParser,
+    MethodologyRevisionRepo,
+    ScopedRevisionExecutor,
+)
 
 __all__ = [
     "MethodologyGate",
     "MethodologyGateDecision",
     "MethodologyGateInterrupt",
     "MethodologyGatePolicy",
+    "HumanApprovalCheckpoint",
+    "HumanApprovalCheckpointPolicy",
+    "MethodologistChangeRequest",
+    "MethodologyAssistantCommandParser",
+    "MethodologyRevisionRepo",
+    "ScopedRevisionExecutor",
     "StageReviewIssue",
     "StageReviewResult",
 ]

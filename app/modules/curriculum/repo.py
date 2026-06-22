@@ -873,6 +873,18 @@ class CurriculumCatalogRepo:
             rows = con.execute(stmt).mappings().all()
             return [self._reference_profile_summary(con, row) for row in rows]
 
+    def get_reference_profile(self, profile_id: int) -> dict[str, object] | None:
+        """Return one profile with competency, skill and indicator tree."""
+
+        with self._connect() as con:
+            row = con.execute(PROFILE.select().where(PROFILE.c.id == profile_id)).mappings().first()
+            if row is None:
+                return None
+            return {
+                **self._reference_profile_summary(con, row),
+                "competencies": self._reference_profile_competencies(con, profile_id),
+            }
+
     def save_curriculum_plan(
         self,
         up: UPSkeleton,
@@ -1276,6 +1288,81 @@ class CurriculumCatalogRepo:
             "indicator_count": int(indicator_count or 0),
             "review_competencies": int(review_competencies or 0),
         }
+
+    def _reference_profile_competencies(self, con: Connection, profile_id: int) -> list[dict[str, object]]:
+        stmt = (
+            sa.select(
+                PROFILE_COMPETENCY.c.id.label("profile_competency_id"),
+                PROFILE_COMPETENCY.c.title_in_source,
+                PROFILE_COMPETENCY.c.description_in_source,
+                PROFILE_COMPETENCY.c.prerequisites_text,
+                PROFILE_COMPETENCY.c.sort_order,
+                PROFILE_COMPETENCY.c.review_state,
+                COMPETENCY.c.id.label("competency_id"),
+                COMPETENCY.c.title,
+                COMPETENCY.c.description,
+                COMPETENCY.c.status,
+            )
+            .select_from(PROFILE_COMPETENCY.join(COMPETENCY, COMPETENCY.c.id == PROFILE_COMPETENCY.c.competency_id))
+            .where(PROFILE_COMPETENCY.c.profile_id == profile_id)
+            .order_by(PROFILE_COMPETENCY.c.sort_order, PROFILE_COMPETENCY.c.id)
+        )
+        competencies: list[dict[str, object]] = []
+        for row in con.execute(stmt).mappings().all():
+            skills = self._reference_profile_competency_skills(con, int(row["profile_competency_id"]))
+            competencies.append(
+                {
+                    "profile_competency_id": int(row["profile_competency_id"]),
+                    "competency_id": int(row["competency_id"]),
+                    "title": row["title"],
+                    "title_in_source": row["title_in_source"] or row["title"],
+                    "description": row["description"] or "",
+                    "description_in_source": row["description_in_source"] or "",
+                    "prerequisites_text": row["prerequisites_text"] or "",
+                    "status": row["status"],
+                    "review_state": row["review_state"],
+                    "sort_order": int(row["sort_order"] or 0),
+                    "skill_count": len(skills),
+                    "indicator_count": sum(len(skill["indicators"]) for skill in skills),
+                    "skills": skills,
+                }
+            )
+        return competencies
+
+    def _reference_profile_competency_skills(self, con: Connection, profile_competency_id: int) -> list[dict[str, object]]:
+        stmt = (
+            sa.select(
+                COMPETENCY_SKILL.c.id.label("competency_skill_id"),
+                COMPETENCY_SKILL.c.source_skill_name,
+                COMPETENCY_SKILL.c.review_state,
+                COMPETENCY_SKILL.c.skill_order,
+                SKILL.c.id.label("skill_id"),
+                SKILL.c.canonical_name,
+                SKILL.c.skill_type,
+                SKILL.c.status.label("skill_status"),
+            )
+            .select_from(COMPETENCY_SKILL.outerjoin(SKILL, SKILL.c.id == COMPETENCY_SKILL.c.skill_id))
+            .where(COMPETENCY_SKILL.c.profile_competency_id == profile_competency_id)
+            .order_by(COMPETENCY_SKILL.c.skill_order, COMPETENCY_SKILL.c.id)
+        )
+        skills: list[dict[str, object]] = []
+        for row in con.execute(stmt).mappings().all():
+            skill_id = int(row["skill_id"]) if row["skill_id"] is not None else None
+            skills.append(
+                {
+                    "competency_skill_id": int(row["competency_skill_id"]),
+                    "skill_id": skill_id,
+                    "name": row["canonical_name"] or row["source_skill_name"],
+                    "source_name": row["source_skill_name"],
+                    "skill_type": row["skill_type"] or "unknown",
+                    "status": row["skill_status"] or "missing",
+                    "review_state": row["review_state"],
+                    "skill_order": int(row["skill_order"] or 0),
+                    "aliases": self._reference_skill_aliases(con, skill_id) if skill_id is not None else [],
+                    "indicators": self._reference_indicators(con, int(row["competency_skill_id"])),
+                }
+            )
+        return skills
 
     @contextmanager
     def _connect(self) -> Iterator[Connection]:

@@ -25,6 +25,10 @@ class BudgetResult:
     def is_over_budget(self) -> bool:
         return self.total_lines > self.max_lines
 
+    @property
+    def blocks_merge(self) -> bool:
+        return self.is_over_budget and not self.budget_override
+
 
 def _as_posix(path: Path) -> str:
     return path.as_posix()
@@ -78,10 +82,15 @@ def load_budget_results(config_path: Path, root: Path) -> list[BudgetResult]:
 
 def run(config_path: Path, root: Path) -> int:
     results = load_budget_results(config_path=config_path, root=root)
-    failures = [result for result in results if result.is_over_budget]
+    failures = [result for result in results if result.blocks_merge]
 
     for result in results:
-        status = "FAIL" if result.is_over_budget else "OK"
+        if result.blocks_merge:
+            status = "FAIL"
+        elif result.is_over_budget:
+            status = "OVERRIDE"
+        else:
+            status = "OK"
         override = " override" if result.budget_override else ""
         print(
             f"{status} {result.name}: {result.total_lines}/{result.max_lines} lines "

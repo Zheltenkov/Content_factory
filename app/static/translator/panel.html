@@ -11,6 +11,10 @@
       <header class="workbench-header">
         <a class="back-link" href="/">Content Factory</a>
         <h1>Переводчик</h1>
+        <nav class="toolbar" aria-label="Связанные модули">
+          <a class="btn" href="/static/generator/panel.html">Генератор</a>
+          <a class="btn" href="/static/checker/panel.html">Проверка</a>
+        </nav>
       </header>
 
       <section class="tool-grid">
@@ -32,6 +36,7 @@
               <option value="literal">Дословный</option>
               <option value="combined">Дословный + читаемость</option>
             </select>
+            <input id="translatorProvider" type="text" placeholder="LLM provider" />
             <button type="submit">Перевести</button>
           </div>
         </form>
@@ -53,26 +58,52 @@
               <select id="translatorOutputMode">
                 <option value="subtitles_only">Субтитры</option>
                 <option value="both">Субтитры + video adapter</option>
+                <option value="burned_video">Только video adapter</option>
               </select>
+              <select id="translatorSubtitleStyle">
+                <option value="boxed">Boxed</option>
+                <option value="outline">Outline</option>
+              </select>
+              <input id="translatorVideoProvider" type="text" placeholder="LLM provider" />
               <button type="submit">Перевести видео</button>
             </div>
           </form>
-          <div id="translatorDownloads" class="empty-inline"></div>
         </section>
       </section>
 
       <section class="tool-grid">
-        <article class="editor-panel">
-          <h2>Оригинал</h2>
-          <pre id="translatorOriginal" class="markdown-preview"></pre>
-        </article>
-        <article class="editor-panel">
-          <h2>Перевод</h2>
+        <aside class="side-panel">
+          <h2>Статус</h2>
           <div id="translatorStatus" class="empty-inline">Ожидает запуска.</div>
-          <pre id="translatorResult" class="markdown-preview"></pre>
-        </article>
+          <div class="progress-track" aria-hidden="true">
+            <div id="translatorProgress" class="progress-bar"></div>
+          </div>
+          <div id="translatorMetrics" class="metrics-grid"></div>
+          <div id="translatorDownloads" class="reference-list compact"></div>
+        </aside>
+        <section class="editor-panel translator-result-panel">
+          <div class="tab-list" role="tablist" aria-label="Результат перевода">
+            <button class="tab-button active" type="button" data-tab-target="translatorOriginalTab" aria-selected="true">Оригинал</button>
+            <button class="tab-button" type="button" data-tab-target="translatorResultTab" aria-selected="false">Перевод</button>
+            <button class="tab-button" type="button" data-tab-target="translatorJobTab" aria-selected="false">Job</button>
+          </div>
+          <section id="translatorOriginalTab" class="tab-content active" role="tabpanel">
+            <article id="translatorOriginal" class="markdown-preview"></article>
+          </section>
+          <section id="translatorResultTab" class="tab-content" role="tabpanel" hidden>
+            <article id="translatorResult" class="markdown-preview"></article>
+          </section>
+          <section id="translatorJobTab" class="tab-content" role="tabpanel" hidden>
+            <details class="generated-data-preview" open>
+              <summary>Translation job payload</summary>
+              <pre id="translatorJobPayload"></pre>
+            </details>
+          </section>
+        </section>
       </section>
     </main>
+    <script src="/static/shared/shell.js"></script>
+    <script src="/static/shared/markdown.js"></script>
     <script src="/static/translator/panel.js"></script>
   </body>
 </html>

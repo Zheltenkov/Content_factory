@@ -1,0 +1,21 @@
+repos:
+  - repo: local
+    hooks:
+      - id: line-budget
+        name: Enforce line budgets
+        entry: python scripts/ci/check_line_budget.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: grep-gates
+        name: Enforce grep gates
+        entry: python scripts/ci/check_grep_gates.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: duplicate-detector
+        name: Detect duplicate Python/JavaScript functions
+        entry: python scripts/ci/check_duplicates.py
+        language: system
+        pass_filenames: false
+        always_run: true

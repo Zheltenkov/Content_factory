@@ -56,6 +56,33 @@ packages:
         cleanup_tmp_repo(tmp_path)
 
 
+def test_line_budget_allows_explicit_budget_override() -> None:
+    tmp_path = make_tmp_repo()
+    try:
+        source = tmp_path / "pkg"
+        source.mkdir()
+        (source / "module.py").write_text("a = 1\nb = 2\nc = 3\n", encoding="utf-8")
+        (tmp_path / "line_budget.yaml").write_text(
+            """
+packages:
+  demo:
+    paths:
+      - pkg/*.py
+    max_lines: 2
+    budget_override: true
+    reason: tested override
+""".strip(),
+            encoding="utf-8",
+        )
+
+        result = run_gate("check_line_budget.py", tmp_path)
+
+        assert result.returncode == 0
+        assert "OVERRIDE demo: 3/2" in result.stdout
+    finally:
+        cleanup_tmp_repo(tmp_path)
+
+
 def test_grep_gates_catch_architecture_contract_violations() -> None:
     tmp_path = make_tmp_repo()
     try:
@@ -101,6 +128,38 @@ def test_grep_gates_catch_architecture_contract_violations() -> None:
         cleanup_tmp_repo(tmp_path)
 
 
+def test_grep_gates_allow_sql_only_in_repo_layer() -> None:
+    tmp_path = make_tmp_repo()
+    try:
+        (tmp_path / "app" / "modules" / "feature").mkdir(parents=True)
+        (tmp_path / "app" / "core" / "methodology" / "revision").mkdir(parents=True)
+        (tmp_path / "app" / "core" / "methodology" / "revision" / "repo.py").write_text(
+            "def ok(con):\n    con.execute('SELECT 1')\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "app" / "modules" / "feature" / "service.py").write_text(
+            "def bad(con):\n    con.execute('SELECT 1')\n",
+            encoding="utf-8",
+        )
+
+        result = run_gate("check_grep_gates.py", tmp_path)
+
+        assert result.returncode == 1
+        assert "service.py" in result.stdout
+        assert "revision/repo.py" not in result.stdout
+    finally:
+        cleanup_tmp_repo(tmp_path)
+
+
+def test_ci_workflow_and_pre_commit_run_contract_gates() -> None:
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    pre_commit = (ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+
+    for script in ("check_line_budget.py", "check_grep_gates.py", "check_duplicates.py"):
+        assert script in ci
+        assert script in pre_commit
+
+
 def test_duplicate_detector_catches_large_copied_functions() -> None:
     tmp_path = make_tmp_repo()
     try:
@@ -117,5 +176,25 @@ def test_duplicate_detector_catches_large_copied_functions() -> None:
         assert "duplicate_function" in result.stdout
         assert "one.py" in result.stdout
         assert "two.py" in result.stdout
+    finally:
+        cleanup_tmp_repo(tmp_path)
+
+
+def test_duplicate_detector_catches_large_copied_javascript_functions() -> None:
+    tmp_path = make_tmp_repo()
+    try:
+        (tmp_path / "app" / "a").mkdir(parents=True)
+        (tmp_path / "app" / "b").mkdir(parents=True)
+        body = "\n".join(f"  total += value + {idx};" for idx in range(12))
+        function = f"function copied(value) {{\n  let total = 0;\n{body}\n  return total;\n}}\n"
+        (tmp_path / "app" / "a" / "one.js").write_text(function, encoding="utf-8")
+        (tmp_path / "app" / "b" / "two.js").write_text(function, encoding="utf-8")
+
+        result = run_gate("check_duplicates.py", tmp_path, "--min-lines", "8")
+
+        assert result.returncode == 1
+        assert "duplicate_function" in result.stdout
+        assert "one.js" in result.stdout
+        assert "two.js" in result.stdout
     finally:
         cleanup_tmp_repo(tmp_path)

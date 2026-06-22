@@ -59,6 +59,9 @@ class ReferenceService:
     def profiles(self, *, include_service: bool = False, limit: int = 100) -> list[dict[str, object]]:
         return self.repo.list_reference_profiles(include_service=include_service, limit=limit)
 
+    def profile(self, profile_id: int) -> dict[str, object] | None:
+        return self.repo.get_reference_profile(profile_id)
+
     def reviews(self, *, status: ReviewStatus | None = "open", limit: int = 100) -> list[dict[str, object]]:
         return self.repo.list_review_queue(status=status, limit=limit)
 

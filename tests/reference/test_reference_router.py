@@ -29,6 +29,14 @@ def test_reference_catalog_read_edit_and_review_queue() -> None:
     assert detail.json()["skills"][0]["name"] == "Проектирование REST API"
     assert detail.json()["skills"][0]["indicators"][0]["text"].startswith("Проектирует")
 
+    profiles = client.get("/reference/profiles?include_service=true")
+    assert profiles.status_code == 200
+    profile_id = profiles.json()[0]["id"]
+    profile = client.get(f"/reference/profiles/{profile_id}")
+    assert profile.status_code == 200
+    assert profile.json()["competencies"][0]["title"] == "Backend"
+    assert profile.json()["competencies"][0]["skills"][0]["indicators"][0]["text"].startswith("Проектирует")
+
     patched = client.patch(
         f"/reference/competencies/{competency_id}",
         json={"title": "Backend Engineering", "description": "Обновлено вручную", "status": "active"},
@@ -58,6 +66,37 @@ def test_reference_manifest_and_static_panel_are_registered() -> None:
     assert reference["tables"] == ["competency", "skill", "indicator_row", "review_queue"]
     assert reference["ui_panel"] == "reference/panel.html"
     assert client.get("/static/reference/panel.html").status_code == 200
+
+
+def test_reference_panel_exposes_parity_controls_and_real_endpoints() -> None:
+    client, _repo = _client()
+
+    panel = client.get("/static/reference/panel.html")
+    js = client.get("/static/reference/panel.js")
+
+    assert panel.status_code == 200
+    assert js.status_code == 200
+    for marker in (
+        'data-reference-mode="competencies"',
+        'data-reference-mode="profiles"',
+        'data-reference-mode="skills"',
+        'data-reference-mode="reviews"',
+        'id="skillForm"',
+        'id="skillAliases"',
+    ):
+        assert marker in panel.text
+    for marker in ('data-review-status="resolved"', 'data-review-status="ignored"'):
+        assert marker in js.text
+    for endpoint in (
+        "/reference/summary",
+        "/reference/competencies",
+        "/reference/profiles",
+        "/reference/skills",
+        "/reference/reviews",
+    ):
+        assert endpoint in js.text
+    assert "fetch(" in js.text
+    assert "sqlite" not in js.text.lower()
 
 
 def _client() -> tuple[TestClient, CurriculumCatalogRepo]:
