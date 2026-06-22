@@ -8,6 +8,7 @@ import yaml
 from app.core.config import get_thresholds
 from app.core.methodology.harness import Harness, resolve_profile
 from app.core.methodology.rules import DocImage, GeneratedDoc
+from app.modules.checker.didactic.jury import DidacticJuryConfig
 
 ROOT = Path(__file__).resolve().parent.parent / "app/core/methodology/profiles"
 
@@ -41,6 +42,25 @@ def test_competency_weight_producer_reads_total_from_config() -> None:
     )
 
     assert sum(ctx["curriculum.competency_weights"].values()) == 100
+
+
+def test_didactic_jury_models_are_pinned_and_d4_valid() -> None:
+    config = DidacticJuryConfig.model_validate(get_thresholds().get("checker.didactic"))
+
+    assert config.generator_model == "openai/gpt-5.4-mini"
+    assert config.jury_models == [
+        "google/gemini-3.1-flash-lite-preview",
+        "deepseek/deepseek-v4-pro",
+        "qwen/qwen3.6-plus",
+    ]
+    assert config.debate_roles == {
+        "critic": "x-ai/grok-4.3",
+        "defender": "mistralai/mistral-large",
+        "judge": "google/gemini-3.1-pro-preview",
+    }
+    assert config.generator_model not in config.jury_models
+    assert config.generator_model not in config.debate_roles.values()
+    assert not config.warnings()
 
 
 def test_threshold_values_are_not_stored_in_skill_yaml_or_check_py() -> None:
