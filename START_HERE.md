@@ -40,7 +40,9 @@
   W7.3 CI-гейты выдернуты вперёд: `scripts/ci/check_line_budget.py`,
   `scripts/ci/check_grep_gates.py`, `scripts/ci/check_duplicates.py` и GitHub Actions workflow
   уже включают budgets/grep/duplicates перед оставшимися портами.
-  Дальше — **W6 UI parity**, реальный порт translator doc+video, затем W7.1 revision loop и архив.
+  Translator doc+video добавлен как реальный модуль `app/modules/translator`: README/document translation,
+  subtitle/transcript video workflow, artifacts download и panel. Дальше — **W6 UI parity**, затем
+  W7.1 revision loop и архив.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -180,8 +182,8 @@ checker — помни: в основном НЕ порт
 
 ### Волны 2 (УП), 6 (UI), 7 (петля)
 В `docs/TASKS.md`. Волна 2 в коде закрыта. W6 требует UI parity поверх увеличенного static-бюджета.
-Осталось: пройти `docs/W6_UI_PORT.md` по R1/U1–U7, перенести реальные панели ver1,
-translator doc+video, затем W7 петля+архив.
+Осталось: пройти `docs/W6_UI_PORT.md` по U1–U4/U6–U7, перенести реальные панели ver1,
+затем W7.1 revision loop и архив.
 
 ---
 

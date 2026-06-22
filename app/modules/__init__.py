@@ -5,6 +5,7 @@ from app.modules.checker.router import router as checker_router
 from app.modules.curriculum.router import router as curriculum_router
 from app.modules.generator.router import router as generator_router
 from app.modules.reference.router import router as reference_router
+from app.modules.translator.router import router as translator_router
 
 
 def _empty_module(module_id: str, title: str, icon: str, subtitle: str) -> ModuleManifest:
@@ -35,7 +36,14 @@ BUILTIN_MODULES = (
         ui_panel="checker/panel.html",
         dashboard_tile=Tile(action="goToChecker", subtitle="Структурная и дидактическая оценка"),
     ),
-    _empty_module("translator", "Переводчик", "languages", "Перевод документов и видео"),
+    ModuleManifest(
+        id="translator",
+        title="Переводчик",
+        icon="languages",
+        router=translator_router,
+        ui_panel="translator/panel.html",
+        dashboard_tile=Tile(action="goToTranslator", subtitle="Перевод документов и видео"),
+    ),
     ModuleManifest(
         id="curriculum",
         title="Учебный план",

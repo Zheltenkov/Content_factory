@@ -12,13 +12,67 @@
         <a class="back-link" href="/">Content Factory</a>
         <h1>Переводчик</h1>
       </header>
+
       <section class="tool-grid">
-        <div class="editor-panel">
-          <div class="empty-inline">
-            Порт translator doc+video ещё не подключён в этом монорепо. Панель зарезервирована под отдельную задачу W3–4 translator.
+        <form class="editor-panel" id="translatorDocumentForm">
+          <h2>Документ</h2>
+          <label>Текст README или документа</label>
+          <textarea id="translatorMarkdown" rows="14" placeholder="# Проект&#10;&#10;Описание на русском языке"></textarea>
+          <label>Файл</label>
+          <input id="translatorDocumentFile" type="file" accept=".md,.markdown,.txt,.html,.htm,.docx,.pdf" />
+          <div class="toolbar">
+            <select id="translatorLanguage">
+              <option value="en">EN · Английский</option>
+              <option value="kg">KG · Кыргызский</option>
+              <option value="uz">UZ · Узбекский</option>
+              <option value="tg">TG · Таджикский</option>
+              <option value="ru">RU · Русский</option>
+            </select>
+            <select id="translatorMode">
+              <option value="literal">Дословный</option>
+              <option value="combined">Дословный + читаемость</option>
+            </select>
+            <button type="submit">Перевести</button>
           </div>
-        </div>
+        </form>
+
+        <section class="editor-panel">
+          <h2>Видео / субтитры</h2>
+          <form id="translatorVideoForm">
+            <label>Видео, SRT/VTT/JSON или transcript</label>
+            <input id="translatorVideoFile" type="file" accept=".mp4,.webm,.mov,.avi,.mkv,.m4v,.srt,.vtt,.json,.txt" />
+            <label>Transcript override</label>
+            <textarea id="translatorTranscript" rows="8" placeholder="00:00:00,000 --> 00:00:04,000&#10;Привет, это вводный модуль"></textarea>
+            <div class="toolbar">
+              <select id="translatorVideoLanguage">
+                <option value="en">EN</option>
+                <option value="kg">KG</option>
+                <option value="uz">UZ</option>
+                <option value="tg">TG</option>
+              </select>
+              <select id="translatorOutputMode">
+                <option value="subtitles_only">Субтитры</option>
+                <option value="both">Субтитры + video adapter</option>
+              </select>
+              <button type="submit">Перевести видео</button>
+            </div>
+          </form>
+          <div id="translatorDownloads" class="empty-inline"></div>
+        </section>
+      </section>
+
+      <section class="tool-grid">
+        <article class="editor-panel">
+          <h2>Оригинал</h2>
+          <pre id="translatorOriginal" class="markdown-preview"></pre>
+        </article>
+        <article class="editor-panel">
+          <h2>Перевод</h2>
+          <div id="translatorStatus" class="empty-inline">Ожидает запуска.</div>
+          <pre id="translatorResult" class="markdown-preview"></pre>
+        </article>
       </section>
     </main>
+    <script src="/static/translator/panel.js"></script>
   </body>
 </html>
