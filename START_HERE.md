@@ -42,7 +42,9 @@
   уже включают budgets/grep/duplicates перед оставшимися портами.
   Translator doc+video добавлен как реальный модуль `app/modules/translator`: README/document translation,
   subtitle/transcript video workflow, artifacts download и panel. Дальше — **W6 UI parity**, затем
-  W7.1 revision loop и архив.
+  W7.1 revision loop и архив. W7.2 reverse-extraction добавлен в `app/modules/checker/reverse_extraction`:
+  README normalization, typed structure/tasks extraction, Proverka-style deterministic entity audit и reconciliation
+  в `review_queue` через `CurriculumCatalogRepo`.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -183,7 +185,7 @@ checker — помни: в основном НЕ порт
 ### Волны 2 (УП), 6 (UI), 7 (петля)
 В `docs/TASKS.md`. Волна 2 в коде закрыта. W6 требует UI parity поверх увеличенного static-бюджета.
 Осталось: пройти `docs/W6_UI_PORT.md` по U1–U4/U6–U7, перенести реальные панели ver1,
-затем W7.1 revision loop и архив.
+затем W7.1 revision loop и архив. W7.2 уже закрыт как checker reverse-extraction + catalog reconciliation.
 
 ---
 
