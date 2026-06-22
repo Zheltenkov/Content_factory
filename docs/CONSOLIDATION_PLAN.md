@@ -203,6 +203,11 @@ modules/checker/
 не guardrail. `vendor/mermaid.min.js` не портируется и не считается в бюджет; Mermaid подключается как
 внешняя dependency/CDN. `land.png` — бинарный ассет, не source line budget.
 
+**W6 decomposition:** порядок и промпты живут в `docs/W6_UI_PORT.md`: R1 reference service (поверх
+`CurriculumCatalogRepo`, без второго каталога) → U1 дизайн-система → U2 оболочка+markdown → U3 generator →
+U4 checker → U5 translator → U6 reference panel parity → U7 финальный e2e. Curriculum panel уже готова в T2.6,
+поэтому W6 переносит 4 панели, а U7 проверяет 5/5 плиток.
+
 ---
 
 ## 4. Подключение двух осей к gate (точная механика)
@@ -244,7 +249,7 @@ UI финальных метрик (`final-metrics-ui.png`) показывает
 | **2. curriculum/** | Перенос пайплайна каталога, планировщик, repo (SQLite→PG), **таблицы УП + CRUD + editor-panel**, export(JSON+CSV) | `test_regression_pipeline` зелёный на PG; УП создаётся/правится/читается из БД; CSV — производное |
 | **3–4. generator/ + translator/** | Агенты худеют (промпты/парсинг наружу), 4 слоя оркестрации→`engine.py`, удалить Jaccard-граф, **генератор тянет `CurriculumContext` из БД**, перенос перевода | Генерация e2e на УП из БД даёт README ≥ прежнего качества; перевод doc+video работает; бюджет агентов соблюдён |
 | **5. checker/ (две оси)** | `signals.py` (единый), `structural.py` (из ноутбука, удалить section1-4 checkers), `didactic/` jury+debate, подключить обе оси к gate | Структурная ось ловит N.1–N.5 на эталонном «битом» README; дидактика даёт раздельный профиль; HARD-fail/abstain поднимают `human_review_required` |
-| **6. reference/ + UI-финал** | Свернуть `viewer/app.py` в модуль поверх общих таблиц; перенести ver1 `js/modules/*` в панели модулей; dashboard оставить thin shell. Static budget-override: ≤12k, без vendor/minified и бинарных ассетов | Справочник читается/правится из общей БД; все 5 плиток ведут в живые панели; UI не является набором пустых `panel.html` |
+| **6. reference/ + UI-финал** | R1/U1–U7 из `docs/W6_UI_PORT.md`: reference поверх общего repo; перенести ver1 `js/modules/*` в 4 панели (curriculum уже есть); dashboard оставить thin shell. Static budget-override: ≤12k, без vendor/minified и бинарных ассетов | Справочник читается/правится из общей БД; все 5 плиток ведут в живые панели с реальными endpoint calls; UI не является набором пустых `panel.html` |
 | **7. Петля и архив** | Human-in-the-loop revision loop (scoped revision/change request/checkpoint), reverse-extraction сверяется с каталогом (обратное извлечение → реконсиляция), архив legacy-репозиториев | Правки проходят через change request + scoped revision + checkpoint/rollback; обратная связь замкнута; старые репо помечены archived; CI-гейты включены |
 
 ---

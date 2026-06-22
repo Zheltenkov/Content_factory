@@ -34,8 +34,9 @@
   C4 добавил недостающие deterministic theory/practice checks в `content_sufficiency/check.py`
   и `checker/service.py`, без дублей structural/checklist/gate.
   W6 reference backend + shell добавил thin `app/modules/reference` поверх общих catalog tables,
-  generic dashboard navigation по `ui_panel`, reference panel и базовые module panels. UI parity ещё не закрыта:
-  static получил `budget-override: ≤12000`, чтобы перенести реальные ver1 `js/modules/*`, а не держать пустые плитки.
+  generic dashboard navigation по `ui_panel`, reference panel и базовые module panels. Curriculum panel уже готова
+  из T2.6; UI parity строит 4 панели, а U7 проверяет 5/5 плиток. Подробный порядок R1/U1–U7 —
+  `docs/W6_UI_PORT.md`.
   Дальше — **W6 UI parity**, реальный порт translator doc+video, затем W7 петля + архив.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
@@ -109,7 +110,8 @@ DoD: объём сопоставим с источником (ориентир ~
 - [x] **W6 reference backend + shell** — thin reference API+service поверх `CurriculumCatalogRepo`,
   reference panel read/edit, generic dashboard navigation по `ui_panel`, 5 panel pages render.
 - [ ] **W6 UI parity** — перенести реальные ver1 `static/js/modules/*` в панели модулей,
-  static `budget-override: ≤12000`; не считать `vendor/mermaid.min.js` и `land.png`.
+  static `budget-override: ≤12000`; не считать `vendor/mermaid.min.js` и `land.png`;
+  порядок и готовые промпты: `docs/W6_UI_PORT.md`.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
@@ -174,7 +176,8 @@ checker — помни: в основном НЕ порт
 
 ### Волны 2 (УП), 6 (UI), 7 (петля)
 В `docs/TASKS.md`. Волна 2 в коде закрыта. W6 требует UI parity поверх увеличенного static-бюджета.
-Осталось: перенести реальные панели ver1, translator doc+video, затем W7 петля+архив.
+Осталось: пройти `docs/W6_UI_PORT.md` по R1/U1–U7, перенести реальные панели ver1,
+translator doc+video, затем W7 петля+архив.
 
 ---
 
