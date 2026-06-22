@@ -13,7 +13,7 @@
 | Стек | FastAPI + alembic + ваниль-JS | Flask (монолит-вьюер) + SQLite |
 | Код (.py без тестов) | **~53 000** | **~17 900** |
 | Тесты | ~11 100 | ~2 000 |
-| JS | ~9 900 (один `main.js` 7 702) | — |
+| JS | ver1: `main.js` ~2 722 + уже модульные `js/modules/*`; ver2.4-монолит 7 702 не является текущим донором UI | — |
 | Самое тяжёлое | `agents/` 13 661, `api/` 11 102, `validators/rubric/` 6 860, `methodology/` 3 619 | `viewer/app.py` **7 595**, `pipeline/` 7 551 |
 | БД | Postgres-готов, alembic (9 миграций), `api/db/` | SQLite, `scripts/build_catalog_db.py` |
 
@@ -197,6 +197,12 @@ modules/checker/
 | `новый дизайн/` (design-canvas.jsx, index.html, styles.css, «Генератор · standalone.html») | Целевая эстетика дашборда. Свести к `s21-design.css` + плиточная оболочка |
 | `app.html`, `checker.html`, `translator.html` | Оболочка остаётся; плитки рендерятся из `MODULE_REGISTRY` |
 
+**budget-override: static_ui ≤12 000.** Старый лимит 5 000 слишком низкий для пяти живых панелей и
+общей дизайн-системы: ver1 frontend без minified vendor и бинарных ассетов примерно 24k строк
+(`css` ~11.4k, `js/modules` ~6.5k, `main.js` ~2.7k, `html` ~3.3k). 5k остаётся запахом скелета,
+не guardrail. `vendor/mermaid.min.js` не портируется и не считается в бюджет; Mermaid подключается как
+внешняя dependency/CDN. `land.png` — бинарный ассет, не source line budget.
+
 ---
 
 ## 4. Подключение двух осей к gate (точная механика)
@@ -238,7 +244,7 @@ UI финальных метрик (`final-metrics-ui.png`) показывает
 | **2. curriculum/** | Перенос пайплайна каталога, планировщик, repo (SQLite→PG), **таблицы УП + CRUD + editor-panel**, export(JSON+CSV) | `test_regression_pipeline` зелёный на PG; УП создаётся/правится/читается из БД; CSV — производное |
 | **3–4. generator/ + translator/** | Агенты худеют (промпты/парсинг наружу), 4 слоя оркестрации→`engine.py`, удалить Jaccard-граф, **генератор тянет `CurriculumContext` из БД**, перенос перевода | Генерация e2e на УП из БД даёт README ≥ прежнего качества; перевод doc+video работает; бюджет агентов соблюдён |
 | **5. checker/ (две оси)** | `signals.py` (единый), `structural.py` (из ноутбука, удалить section1-4 checkers), `didactic/` jury+debate, подключить обе оси к gate | Структурная ось ловит N.1–N.5 на эталонном «битом» README; дидактика даёт раздельный профиль; HARD-fail/abstain поднимают `human_review_required` |
-| **6. reference/ + UI-финал** | Свернуть `viewer/app.py` в модуль поверх общих таблиц, распилить `main.js`, финальная эстетика дашборда | Справочник читается/правится из общей БД; `main.js` < 1 500 на каркас; все 5 плиток рабочие |
+| **6. reference/ + UI-финал** | Свернуть `viewer/app.py` в модуль поверх общих таблиц; перенести ver1 `js/modules/*` в панели модулей; dashboard оставить thin shell. Static budget-override: ≤12k, без vendor/minified и бинарных ассетов | Справочник читается/правится из общей БД; все 5 плиток ведут в живые панели; UI не является набором пустых `panel.html` |
 | **7. Петля и архив** | Human-in-the-loop revision loop (scoped revision/change request/checkpoint), reverse-extraction сверяется с каталогом (обратное извлечение → реконсиляция), архив legacy-репозиториев | Правки проходят через change request + scoped revision + checkpoint/rollback; обратная связь замкнута; старые репо помечены archived; CI-гейты включены |
 
 ---

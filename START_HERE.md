@@ -33,9 +33,10 @@
   и debate critic/defender/judge через `app/core/llm`.
   C4 добавил недостающие deterministic theory/practice checks в `content_sufficiency/check.py`
   и `checker/service.py`, без дублей structural/checklist/gate.
-  W6 reference/UI добавил thin `app/modules/reference` поверх общих catalog tables, generic dashboard navigation
-  по `ui_panel`, reference/generator/checker/translator panels и checker HTTP endpoint.
-  Дальше — **W7 петля + архив** и отдельный реальный порт translator doc+video, если он нужен до закрытия W3–4.
+  W6 reference backend + shell добавил thin `app/modules/reference` поверх общих catalog tables,
+  generic dashboard navigation по `ui_panel`, reference panel и базовые module panels. UI parity ещё не закрыта:
+  static получил `budget-override: ≤12000`, чтобы перенести реальные ver1 `js/modules/*`, а не держать пустые плитки.
+  Дальше — **W6 UI parity**, реальный порт translator doc+video, затем W7 петля + архив.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -105,8 +106,10 @@ DoD: объём сопоставим с источником (ориентир ~
   исключение `GENERATOR_MODEL`, abstain→human_review и debate role-модели.
 - [x] **C4** — deterministic practice/theory checks: только недостающее из legacy validators
   в `content_sufficiency` + `checker/service.py`; structural/checklist/material dependency не дублировались.
-- [x] **W6 reference/UI** — thin reference API+service поверх `CurriculumCatalogRepo`,
+- [x] **W6 reference backend + shell** — thin reference API+service поверх `CurriculumCatalogRepo`,
   reference panel read/edit, generic dashboard navigation по `ui_panel`, 5 panel pages render.
+- [ ] **W6 UI parity** — перенести реальные ver1 `static/js/modules/*` в панели модулей,
+  static `budget-override: ≤12000`; не считать `vendor/mermaid.min.js` и `land.png`.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
@@ -165,13 +168,13 @@ DoD: e2e-тест активного профиля прогоняет prepare/a
 
 ### generator (G1…G5) и checker (C1…C4)
 Полная разбивка на под-задачи с заполненными промптами и путями ver1 — в **`docs/GENERATOR_CHECKER_PORT.md`**.
-G1–G5 и C1–C4 закрыты. W6 reference/UI закрыта как thin module + panel shell.
+G1–G5 и C1–C4 закрыты. W6 reference backend + shell сделан; UI parity не закрыта thin-панелями.
 checker — помни: в основном НЕ порт
 (rubric заменяется скиллами), типы промптов там разные.
 
 ### Волны 2 (УП), 6 (UI), 7 (петля)
-В `docs/TASKS.md`. Волна 2 и W6 в коде закрыты. Осталось: W7 петля+архив, плюс translator doc+video
-как отдельный порт, если закрываем W3–4 строго по исходному DoD.
+В `docs/TASKS.md`. Волна 2 в коде закрыта. W6 требует UI parity поверх увеличенного static-бюджета.
+Осталось: перенести реальные панели ver1, translator doc+video, затем W7 петля+архив.
 
 ---
 
