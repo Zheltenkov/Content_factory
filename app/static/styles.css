@@ -70,6 +70,13 @@ textarea {
 
 .module-tile {
   cursor: pointer;
+  min-height: 150px;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.module-tile:hover {
+  border-color: #8ea0b8;
+  transform: translateY(-1px);
 }
 
 .workbench {
@@ -186,6 +193,139 @@ textarea {
   font-size: 13px;
 }
 
+.toolbar-input {
+  min-width: min(360px, 42vw);
+}
+
+.tool-grid,
+.reference-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: 16px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.reference-grid {
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summary-card {
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.summary-card strong {
+  display: block;
+  font-size: 22px;
+}
+
+.summary-card span,
+.small {
+  color: #667085;
+  font-size: 12px;
+}
+
+.reference-list {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.reference-list.compact {
+  max-height: 260px;
+}
+
+.list-item,
+.review-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+}
+
+.review-item {
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.review-item button {
+  justify-self: start;
+  padding: 6px 8px;
+}
+
+.review-queue h2 {
+  margin: 8px 0 0;
+  font-size: 16px;
+}
+
+.reference-detail,
+.reference-tree,
+.card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.tree-card,
+.indicator-block,
+.empty-inline {
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.tree-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.status-badge,
+.pill {
+  border: 1px solid #cfd6df;
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.indicator-line,
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.levels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.level-cell {
+  border-left: 3px solid #cfd6df;
+  padding-left: 8px;
+}
+
+.output-preview {
+  min-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 760px) {
   .dashboard-shell,
   .workbench {
@@ -194,6 +334,8 @@ textarea {
 
   .workbench-header,
   .curriculum-grid,
+  .tool-grid,
+  .reference-grid,
   .form-row.two {
     grid-template-columns: 1fr;
   }
@@ -204,5 +346,10 @@ textarea {
 
   .toolbar {
     margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-input {
+    min-width: 100%;
   }
 }

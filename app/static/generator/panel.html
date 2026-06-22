@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Генератор · Content Factory</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="workbench generator-panel" data-module="generator">
+      <header class="workbench-header">
+        <a class="back-link" href="/">Content Factory</a>
+        <h1>Генератор</h1>
+      </header>
+      <section class="tool-grid">
+        <form id="generatorForm" class="editor-panel">
+          <label>
+            Учебный план
+            <select id="planSelect"></select>
+          </label>
+          <label>
+            Номер проекта
+            <input id="projectOrder" type="number" min="1" value="1" />
+          </label>
+          <button type="submit">Сгенерировать README</button>
+          <div id="generatorStatus" class="status-line"></div>
+        </form>
+        <section class="editor-panel">
+          <pre id="generatorOutput" class="output-preview"></pre>
+        </section>
+      </section>
+    </main>
+    <script src="/static/generator/panel.js"></script>
+  </body>
+</html>

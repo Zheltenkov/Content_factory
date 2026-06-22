@@ -14,6 +14,21 @@ def test_dashboard_renders_registered_builtin_tiles() -> None:
     assert "Content Factory" in response.text
     assert "Генератор" in response.text
     assert "Учебный план" in response.text
+    assert 'data-panel="reference/panel.html"' in response.text
+
+
+def test_builtin_module_panels_render() -> None:
+    client = TestClient(create_app())
+
+    for path in (
+        "/static/generator/panel.html",
+        "/static/checker/panel.html",
+        "/static/translator/panel.html",
+        "/static/curriculum/panel.html",
+        "/static/reference/panel.html",
+    ):
+        response = client.get(path)
+        assert response.status_code == 200
 
 
 def test_registered_module_has_tile_in_api_modules() -> None:

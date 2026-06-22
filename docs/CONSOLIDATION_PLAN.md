@@ -185,7 +185,7 @@ modules/checker/
 
 | Источник | Действие |
 |---|---|
-| `Spravochnik/viewer/app.py` (**7 595**, монолит path-dispatch) | **Сворачивается** в тонкий read/edit модуль поверх ОБЩИХ таблиц каталога. Не переписывать схему (она сильная: provenance, alias-нормализация, `ai_analysis_*`, `review_queue`) — только сменить транспорт на FastAPI-роутер + panel |
+| `Spravochnik/viewer/app.py` (**~6 978** в текущем legacy), монолит path-dispatch | **Сворачивается** в тонкий read/edit модуль поверх ОБЩИХ таблиц каталога. Не переписывать схему (она сильная: provenance, alias-нормализация, `ai_analysis_*`, `review_queue`) — только сменить транспорт на FastAPI-роутер + panel |
 | `viewer/templates/`, `viewer/static/` | `reference/panel.{html,js}` | Тонкий просмотр/правка навыков, компетенций, индикаторов, графа |
 | `Spravochnik/КПшки/`, `scripts/`, `sql/`, artifacts | — | **НЕ переносятся:** отработавшие миграции, бинарники, данные. Данные — в Postgres, не в git |
 
@@ -193,7 +193,7 @@ modules/checker/
 
 | Источник | Действие |
 |---|---|
-| `main.js` (**7 702**, монолит) | Распил по модулям: общий каркас (auth, dashboard, markdown-normalize) в `core/ui/`, остальное в `modules/<name>/panel.js`. Сейчас модуляризован только `methodologyPanel.js` |
+| `main.js` ver1 (**~2 722**) + уже готовые `js/modules/*` | Не пилить как ver2.4-монолит: переселять готовые модули в `app/static/<module>/panel.js`, общий dashboard оставлять thin shell по `MODULE_REGISTRY` |
 | `новый дизайн/` (design-canvas.jsx, index.html, styles.css, «Генератор · standalone.html») | Целевая эстетика дашборда. Свести к `s21-design.css` + плиточная оболочка |
 | `app.html`, `checker.html`, `translator.html` | Оболочка остаётся; плитки рендерятся из `MODULE_REGISTRY` |
 

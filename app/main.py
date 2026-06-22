@@ -43,7 +43,7 @@ def _render_tile(module: dict[str, object]) -> str:
     tile = module["dashboard_tile"]
     assert isinstance(tile, dict)
     return (
-        f'<article class="module-tile" data-action="{escape(str(tile["action"]))}">'
+        f'<article class="module-tile" data-action="{escape(str(tile["action"]))}" data-panel="{escape(str(module["ui_panel"]))}">'
         f'<span class="module-icon">{escape(str(module["icon"]))}</span>'
         f"<h2>{escape(str(module['title']))}</h2>"
         f"<p>{escape(str(tile['subtitle']))}</p>"

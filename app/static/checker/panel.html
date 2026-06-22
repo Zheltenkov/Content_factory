@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Проверка · Content Factory</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="workbench checker-panel" data-module="checker">
+      <header class="workbench-header">
+        <a class="back-link" href="/">Content Factory</a>
+        <h1>Проверка</h1>
+      </header>
+      <section class="tool-grid">
+        <form id="checkerForm" class="editor-panel">
+          <label>
+            README markdown
+            <textarea id="markdownInput" rows="18" required></textarea>
+          </label>
+          <button type="submit">Проверить</button>
+          <div id="checkerStatus" class="status-line"></div>
+        </form>
+        <section class="editor-panel">
+          <div id="checkerSummary" class="metrics"></div>
+          <pre id="checkerOutput" class="output-preview"></pre>
+        </section>
+      </section>
+    </main>
+    <script src="/static/checker/panel.js"></script>
+  </body>
+</html>

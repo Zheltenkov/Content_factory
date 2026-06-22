@@ -33,7 +33,9 @@
   и debate critic/defender/judge через `app/core/llm`.
   C4 добавил недостающие deterministic theory/practice checks в `content_sufficiency/check.py`
   и `checker/service.py`, без дублей structural/checklist/gate.
-  Дальше — **W6 reference + UI-финал**.
+  W6 reference/UI добавил thin `app/modules/reference` поверх общих catalog tables, generic dashboard navigation
+  по `ui_panel`, reference/generator/checker/translator panels и checker HTTP endpoint.
+  Дальше — **W7 петля + архив** и отдельный реальный порт translator doc+video, если он нужен до закрытия W3–4.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -103,6 +105,8 @@ DoD: объём сопоставим с источником (ориентир ~
   исключение `GENERATOR_MODEL`, abstain→human_review и debate role-модели.
 - [x] **C4** — deterministic practice/theory checks: только недостающее из legacy validators
   в `content_sufficiency` + `checker/service.py`; structural/checklist/material dependency не дублировались.
+- [x] **W6 reference/UI** — thin reference API+service поверх `CurriculumCatalogRepo`,
+  reference panel read/edit, generic dashboard navigation по `ui_panel`, 5 panel pages render.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
@@ -117,10 +121,9 @@ DoD: объём сопоставим с источником (ориентир ~
 DoD: pytest tests/test_harness.py tests/test_document_integrity.py — 10/10 зелёных. Не бери следующую.
 ```
 
-### ▶ reference — ПЕРВЫЙ ПОРТ-ИНДИКАТОР (после методслоя)
-Источник `legacy/Spravochnik/viewer/app.py` (7595 строк). Это проверка, что legacy реально читается:
-если `app/modules/reference/service.py` вышел в тысячи строк, а не сотню — цикл со скелетами разорван.
-Бери ПРОМПТ ПОРТА, `<legacy/путь>` = legacy/Spravochnik/viewer/app.py, `<app/путь>` = app/modules/reference/.
+### reference — закрыт в W6
+Источник `legacy/Spravochnik/viewer/app.py` фактически 6978 строк в текущем legacy. Перенесён не 1:1:
+тонкий `app/modules/reference` читает/правит справочник через общий `CurriculumCatalogRepo`, SQL не дублируется.
 
 ### TM.2.<n> — скиллы из регламентов (без legacy, по одному за прогон)
 ```
@@ -162,13 +165,13 @@ DoD: e2e-тест активного профиля прогоняет prepare/a
 
 ### generator (G1…G5) и checker (C1…C4)
 Полная разбивка на под-задачи с заполненными промптами и путями ver1 — в **`docs/GENERATOR_CHECKER_PORT.md`**.
-G1–G5 и C1–C4 закрыты. Следующая крупная группа — **W6 reference + UI-финал**.
+G1–G5 и C1–C4 закрыты. W6 reference/UI закрыта как thin module + panel shell.
 checker — помни: в основном НЕ порт
 (rubric заменяется скиллами), типы промптов там разные.
 
 ### Волны 2 (УП), 6 (UI), 7 (петля)
-В `docs/TASKS.md`. Волна 2 атомарна; UI (W6) — отдельными задачами на panel.{html,js} модуля из
-`legacy/Content_generator/static`. Перед волной 5 закрой `docs/DECISIONS.md D4` (слаги OpenRouter).
+В `docs/TASKS.md`. Волна 2 и W6 в коде закрыты. Осталось: W7 петля+архив, плюс translator doc+video
+как отдельный порт, если закрываем W3–4 строго по исходному DoD.
 
 ---
 

@@ -18,9 +18,7 @@
       document.addEventListener("click", (event) => {
         const tile = event.target.closest(".module-tile");
         if (!tile) return;
-        if (tile.dataset.action === "goToCurriculum") {
-          window.location.href = "/static/curriculum/panel.html";
-        }
+        if (tile.dataset.panel) window.location.href = `/static/${tile.dataset.panel}`;
       });
     </script>
   </body>

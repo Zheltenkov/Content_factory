@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Справочник · Content Factory</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="workbench reference-panel" data-module="reference">
+      <header class="workbench-header">
+        <a class="back-link" href="/">Content Factory</a>
+        <h1>Справочник</h1>
+        <div class="toolbar">
+          <input id="searchInput" class="toolbar-input" placeholder="Компетенция, skill, индикатор" />
+          <button id="searchButton" type="button">Искать</button>
+        </div>
+      </header>
+
+      <section class="reference-grid">
+        <aside class="side-panel">
+          <div id="summaryCards" class="summary-grid" aria-label="Сводка справочника"></div>
+          <div id="competencyList" class="reference-list" aria-label="Компетенции"></div>
+          <section class="review-queue">
+            <h2>Очередь проверки</h2>
+            <div id="reviewList" class="reference-list compact"></div>
+          </section>
+        </aside>
+
+        <section class="editor-panel reference-detail" aria-live="polite">
+          <form id="competencyForm">
+            <div class="form-row two">
+              <label>
+                Название
+                <input id="competencyTitle" required />
+              </label>
+              <label>
+                Статус
+                <select id="competencyStatus">
+                  <option value="active">active</option>
+                  <option value="candidate">candidate</option>
+                  <option value="deprecated">deprecated</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              Описание
+              <textarea id="competencyDescription" rows="4"></textarea>
+            </label>
+            <div class="form-actions">
+              <button type="submit">Сохранить</button>
+            </div>
+          </form>
+          <div id="detailMeta" class="metrics"></div>
+          <div id="skillTree" class="reference-tree"></div>
+          <div id="referenceStatus" class="status-line"></div>
+        </section>
+      </section>
+    </main>
+    <script src="/static/reference/panel.js"></script>
+  </body>
+</html>
