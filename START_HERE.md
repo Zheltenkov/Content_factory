@@ -24,7 +24,14 @@
   G4a practice core добавил `generator.practice`: задания, artifact chain, raw evidence specs и замену Главы 3.
   G4b practice review добавил critic/repair-loop и optional bonus tasks поверх G4a.
   G4c heavy generators добавил deterministic formula/table/Mermaid assets, dataset files и code examples.
-  Дальше — **G5 refine**.
+  G5 refine добавил post-processing, enhancement quality gate, scoped regeneration и reuse MethodologyGate/voice.
+  C2 structural axis добавил thin checker wiring через `readme_structure` + `document_integrity`,
+  `rubric_json` и `MethodologyGate`. C1 `signals.py` ещё не сделан; C2 подхватывает его опционально.
+  C3 didactic axis добавил PoLL-жюри, median aggregation, anti-self-bias exclusion, abstain escalation
+  и debate critic/defender/judge через `app/core/llm`.
+  C4 добавил недостающие deterministic theory/practice checks в `content_sufficiency/check.py`
+  и `checker/service.py`, без дублей structural/checklist/gate.
+  Дальше — **checker C1**.
   Порядок зависимостей: `0 → 1 ∥ M → 2 → (3,4) → 5 → 6 → 7`.
 
 ## Три правила, которыми держится результат (выстраданы)
@@ -84,6 +91,14 @@ DoD: объём сопоставим с источником (ориентир ~
   optional bonus tasks and DB-backed e2e metadata.
 - [x] **G4c** — generator heavy assets: deterministic formula/table/Mermaid blocks, dataset files
   (csv/json/txt/md/xlsx) and code examples wired into DB-backed e2e metadata.
+- [x] **G5** — generator refine: deterministic editor cleanup, enhancement plan/gate,
+  schema-first scoped regeneration and reuse of core methodology gate/voice checks.
+- [x] **C2** — checker structural axis: `readme_structure` + `document_integrity` через harness,
+  `rubric_json` для gate, без копирования legacy/rubric validators.
+- [x] **C3** — checker didactic axis: PoLL-жюри из notebook, медиана по моделям,
+  исключение `GENERATOR_MODEL`, abstain→human_review и debate role-модели.
+- [x] **C4** — deterministic practice/theory checks: только недостающее из legacy validators
+  в `content_sufficiency` + `checker/service.py`; structural/checklist/material dependency не дублировались.
 
 ### ▶ T1.1 + TM.1 — перенос методслоя (следующая; без legacy, делать вместе)
 ```
@@ -143,8 +158,8 @@ DoD: e2e-тест активного профиля прогоняет prepare/a
 
 ### generator (G1…G5) и checker (C1…C4)
 Полная разбивка на под-задачи с заполненными промптами и путями ver1 — в **`docs/GENERATOR_CHECKER_PORT.md`**.
-Брать строго по одной. **Следующая: G5 refine** (`content_editor`, `quality_gate`,
-`enhancement_manager`, `enhancement_planner`, `regeneration`) поверх G1-G4c. checker — помни: в основном НЕ порт
+Брать строго по одной. **Следующая: checker C1** из `docs/GENERATOR_CHECKER_PORT.md`.
+checker — помни: в основном НЕ порт
 (rubric заменяется скиллами), типы промптов там разные.
 
 ### Волны 2 (УП), 6 (UI), 7 (петля)

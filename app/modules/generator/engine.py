@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from app.core.llm.observe import LLMTraceRecorder, ObservedLLMClient, stable_input_hash
 from app.core.methodology.gate import MethodologyGate, StageReviewResult
 from app.core.methodology.harness import Harness, resolve_profile
+from app.core.methodology.rubric import rule_issues_to_rubric
 from app.core.methodology.rules import GeneratedDoc, RuleIssue
 from app.modules.generator.domain import (
     StageContract,
@@ -218,21 +219,6 @@ class GeneratorMethodologyEngine:
             stage_reviews=stage_reviews,
             llm_traces=list(self._llm_trace_recorder.events),
         )
-
-
-def rule_issues_to_rubric(issues: Iterable[RuleIssue]) -> dict[str, Any]:
-    """Serialize deterministic skill issues into MethodologyGate rubric_json."""
-
-    items = [issue.model_dump(mode="json") for issue in issues]
-    hard = [item for item in items if item.get("severity") == "hard"]
-    soft = [item for item in items if item.get("severity") == "soft"]
-    return {
-        "issues": items,
-        "passed": not hard,
-        "hard_count": len(hard),
-        "soft_count": len(soft),
-        "skills": sorted({str(item.get("skill_id")) for item in items if item.get("skill_id")}),
-    }
 
 
 def _merge_output(ctx: dict[str, Any], output: GeneratedDoc | dict[str, Any] | str | None) -> tuple[dict[str, Any], GeneratedDoc | None]:

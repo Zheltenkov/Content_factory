@@ -29,12 +29,15 @@ def test_content_sufficiency_is_scoped_to_generation_content_stages() -> None:
     assert "образовательных результатов" not in intro
 
 
-def test_content_sufficiency_has_no_machine_validator() -> None:
+def test_content_sufficiency_machine_validator_is_checker_scoped() -> None:
     profile = resolve_profile("_base", ROOT)
     skill = profile.skills["content_sufficiency"]
     harness = Harness(profile)
-    broken = GeneratedDoc(markdown="# Теория\n\nИщите все сами. Практики нет.")
+    empty = GeneratedDoc(markdown="# Теория\n\nИщите все сами. Практики нет.")
+    broken = GeneratedDoc(markdown="# Теория", metadata={"theory_parts": [], "practice_tasks": [{"title": "x"}]})
 
-    assert skill.check is None
+    assert skill.check is not None
+    assert any(item.id == "content_sufficiency" for item in harness.bind.get(("post.validate", "checker.content_sufficiency"), []))
     assert all(item.id != "content_sufficiency" for item in harness.bind.get(("post.validate", "generator.evaluation"), []))
-    assert not any(issue.skill_id == "content_sufficiency" for issue in harness.validate("generator.evaluation", broken))
+    assert not any(issue.skill_id == "content_sufficiency" for issue in harness.validate("generator.evaluation", empty))
+    assert any(issue.skill_id == "content_sufficiency" for issue in harness.validate("checker.content_sufficiency", broken))

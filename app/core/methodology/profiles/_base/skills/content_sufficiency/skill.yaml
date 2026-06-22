@@ -4,5 +4,8 @@ source: "Регламент 3.2.2"
 hooks:
   - at: prompt.augment
     stages: [generator.theory, generator.practice]
+  - at: post.validate
+    stages: [checker.content_sufficiency]
 severity: soft
 instructions: instructions.md
+check: check.py

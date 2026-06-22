@@ -58,6 +58,8 @@ def test_generator_e2e_uses_curriculum_plan_from_db() -> None:
     assert payload["document"]["metadata"]["formula_assets"]["tables"]
     assert payload["document"]["metadata"]["dataset_files"]
     assert payload["document"]["metadata"]["code_examples"]
+    assert payload["document"]["metadata"]["refine_report"]
+    assert payload["document"]["metadata"]["quality_gate"]
     assert payload["document"]["artifacts"]
     assert payload["rubric_json"]["passed"] is True
     assert payload["gate_review"]["human_review_required"] is False

@@ -6,4 +6,27 @@ hooks:
     stages: [generator.evaluation, checker.evaluation]
 severity: hard
 applies_to: {artifact_family: [readme, lesson, guide]}
-params: {check_tables: true}
+params:
+  check_tables: true
+  max_duplicate_block_ratio: 0.08
+  min_block_chars: 120
+  placeholder_markers:
+    - TODO
+    - FIXME
+    - XXX
+    - lorem ipsum
+    - ЗАПОЛНИ
+    - ВСТАВЬ
+    - ЗДЕСЬ ДОЛЖ
+    - ОБРАЗЕЦ ТЕКСТА
+    - PLACEHOLDER
+    - <...>
+    - ВАШ ТЕКСТ
+  check_diagram_topic: true
+  diagram_fences: [mermaid, plantuml, dot, graphviz]
+  diagram_context_lines: 6
+  check_broken_text: true
+  max_dangling_reported: 3
+  require_single_project_id: true
+  project_id_pattern: '\b[A-Z]{1,4}\d{1,3}_[A-Z][A-Za-z0-9]+(?:_v[\d.]+)?\b'
+check: check.py

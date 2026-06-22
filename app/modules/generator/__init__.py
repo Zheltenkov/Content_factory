@@ -8,6 +8,7 @@ from app.modules.generator.engine import (
     GeneratorWorkflowError,
     rule_issues_to_rubric,
 )
+from app.modules.generator.refine import RefineResult, refine_document, regenerate_markdown
 from app.modules.generator.router import router
 from app.modules.generator.service import CurriculumContextNotFound, GeneratorRun, GeneratorService
 
@@ -19,10 +20,13 @@ __all__ = [
     "GeneratorWorkflowError",
     "GeneratorRun",
     "GeneratorService",
+    "RefineResult",
     "StageContract",
     "StageExecution",
     "WorkflowProfile",
     "WorkflowSnapshot",
     "router",
+    "refine_document",
+    "regenerate_markdown",
     "rule_issues_to_rubric",
 ]

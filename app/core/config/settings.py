@@ -41,6 +41,7 @@ class Thresholds(BaseModel):
     version: int = 1
     methodology: dict[str, Any] = Field(default_factory=dict)
     structural: dict[str, Any] = Field(default_factory=dict)
+    checker: dict[str, Any] = Field(default_factory=dict)
     skills: dict[str, dict[str, Any]] = Field(default_factory=dict)
     enhancement: dict[str, Any] = Field(default_factory=dict)
 

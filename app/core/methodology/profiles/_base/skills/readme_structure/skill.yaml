@@ -5,7 +5,13 @@ hooks:
   - at: prompt.augment
     stages: [generator.theory, generator.practice]
   - at: post.validate
-    stages: [generator.evaluation]
+    stages: [generator.evaluation, checker.evaluation]
 severity: hard
 applies_to: {artifact_family: [readme]}
-params: {content_model: readme_linear, naming: strict}
+params:
+  content_model: readme_linear
+  naming: strict
+  require_metadata_flag: readme_structure_required
+  toc_min_lines: 3
+  chapter_min_chars: 50
+check: check.py

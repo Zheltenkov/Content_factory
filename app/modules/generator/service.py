@@ -9,6 +9,7 @@ from typing import Any
 from app.core.models import ArtifactRef, CurriculumContext, GeneratedDoc
 from app.modules.curriculum.repo import CurriculumCatalogRepo
 from app.modules.generator.engine import EngineStage, GeneratorEngineResult, GeneratorMethodologyEngine
+from app.modules.generator.refine import run as run_refine
 from app.modules.generator.stages import head as head_stage
 from app.modules.generator.stages import generators as generators_stage
 from app.modules.generator.stages import practice as practice_stage
@@ -100,6 +101,14 @@ class GeneratorService:
                     gate_stage="practice",
                 ),
                 EngineStage(
+                    "generator.refine",
+                    run_refine,
+                    node_id="global_quality",
+                    inputs=("curriculum_context", "markdown", "theory_parts", "practice_tasks", "generated_assets", "formula_assets", "dataset_files", "code_examples", "rubric_json"),
+                    outputs=("markdown", "refine_report", "enhancement_plan", "quality_gate", "regeneration_report", "edit_actions"),
+                    gate_stage="evaluation",
+                ),
+                EngineStage(
                     "generator.finalize",
                     lambda ctx, _augment: _document_from_context(context, ctx, template_blocks),
                     node_id="finalize",
@@ -159,6 +168,7 @@ def _document_from_context(context: CurriculumContext, engine_context: dict[str,
             "plan_id": context.plan_id,
             "project_order": context.current_project_order,
             "artifact_target": "readme_project",
+            "readme_structure_required": True,
             "template_blocks_required": True,
             "curriculum_context": context.model_dump(mode="json"),
             "theory_parts": engine_context.get("theory_parts") or [],
@@ -172,6 +182,11 @@ def _document_from_context(context: CurriculumContext, engine_context: dict[str,
             "formula_assets": engine_context.get("formula_assets") or {},
             "dataset_files": engine_context.get("dataset_files") or [],
             "code_examples": engine_context.get("code_examples") or [],
+            "refine_report": engine_context.get("refine_report") or {},
+            "enhancement_plan": engine_context.get("enhancement_plan") or {},
+            "quality_gate": engine_context.get("quality_gate") or {},
+            "regeneration_report": engine_context.get("regeneration_report") or {},
+            "edit_actions": engine_context.get("edit_actions") or [],
         },
     )
 
