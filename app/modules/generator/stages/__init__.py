@@ -11,8 +11,8 @@ run = run_head
 __all__ = [
     "GeneratorAssetsResult",
     "HeadResult",
-    "PracticeReviewResult",
     "PracticeResult",
+    "PracticeReviewResult",
     "TheoryResult",
     "generate_assets",
     "generate_head",

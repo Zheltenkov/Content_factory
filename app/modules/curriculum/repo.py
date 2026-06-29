@@ -14,7 +14,8 @@ from functools import lru_cache
 import json
 import re
 import unicodedata
-from typing import Any, Iterable, Iterator, Literal
+from typing import Any, Literal, cast
+from collections.abc import Iterable, Iterator
 
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection, Engine
@@ -545,7 +546,9 @@ class CurriculumCatalogRepo:
                 )
             for alias in aliases:
                 self._ensure_skill_alias(con, skill_id, alias, alias_source)
-            return self._get_skill(con, skill_id)
+            skill = self._get_skill(con, skill_id)
+            assert skill is not None  # just upserted/updated above
+            return skill
 
     def get_skill(self, skill_id: int) -> CatalogSkill | None:
         with self._connect() as con:
@@ -737,7 +740,7 @@ class CurriculumCatalogRepo:
                 "status": skill.status,
                 "aliases": list(skill.aliases),
                 "links": links,
-                "indicators": [indicator for link in links for indicator in link["indicators"]],
+                "indicators": [indicator for link in links for indicator in cast("list[Any]", link["indicators"])],
             }
 
     def create_group_skill(
@@ -1301,14 +1304,14 @@ class CurriculumCatalogRepo:
             source="proposal_accept",
             scopes=[
                 {"scope_type": str(proposal["scope_type"]), "scope_name": scope_name, "weight": 1.0}
-                for scope_name in (proposal["scope_names"] or ["*"])
+                for scope_name in (cast("list[str]", proposal["scope_names"]) or ["*"])
             ],
         )
         with self._connect() as con:
             con.execute(
                 CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.update()
                 .where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id == proposal_id)
-                .values(status="accepted", accepted_template_id=int(template["id"]), updated_at=datetime.now(UTC))
+                .values(status="accepted", accepted_template_id=int(cast(int, template["id"])), updated_at=datetime.now(UTC))
             )
             updated = con.execute(
                 CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.select().where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id == proposal_id)
@@ -2174,7 +2177,7 @@ class CurriculumCatalogRepo:
             "updated_at": _iso_or_none(row["updated_at"]),
             "scopes": scopes,
             "scope_type": editable_scope.get("scope_type") or "coverage_area",
-            "scope_weight": float(editable_scope.get("weight") or 1.0),
+            "scope_weight": float(cast(float, editable_scope.get("weight") or 1.0)),
             "scope_names": [str(scope.get("scope_name") or "") for scope in scopes if scope.get("scope_type") != "any" and str(scope.get("scope_name") or "").strip()],
         }
 
@@ -2210,7 +2213,7 @@ class CurriculumCatalogRepo:
                     scope_id=scope.get("scope_id"),
                     scope_name=scope.get("scope_name") or None,
                     normalized_scope_name=scope.get("normalized_scope_name") or None,
-                    weight=float(scope.get("weight") or 1.0),
+                    weight=float(cast(float, scope.get("weight") or 1.0)),
                 )
             )
 
@@ -2305,7 +2308,7 @@ class CurriculumCatalogRepo:
                     "candidate_skill_count": len(candidate_skills),
                 }
             )
-        scored.sort(key=lambda item: (float(item["score"]), int(item["skill_overlap_count"])), reverse=True)
+        scored.sort(key=lambda item: (float(cast(float, item["score"])), int(cast(int, item["skill_overlap_count"]))), reverse=True)
         return scored[:limit]
 
     def _competency_skill_ids(self, con: Connection, competency_id: int) -> set[int]:
@@ -2501,7 +2504,7 @@ class CurriculumCatalogRepo:
                     "review_state": row["review_state"],
                     "sort_order": int(row["sort_order"] or 0),
                     "skill_count": len(skills),
-                    "indicator_count": sum(len(skill["indicators"]) for skill in skills),
+                    "indicator_count": sum(len(cast("list[Any]", skill["indicators"])) for skill in skills),
                     "skills": skills,
                 }
             )
@@ -2982,7 +2985,7 @@ def _proposal_update_values(row: sa.RowMapping, patch: dict[str, object]) -> dic
     if "scope_names" in patch and patch["scope_names"] is not None:
         values["scope_names_json"] = [str(item).strip() for item in _json_list(patch["scope_names"]) if str(item).strip()]
     if "confidence" in patch and patch["confidence"] is not None:
-        values["confidence"] = float(patch["confidence"])
+        values["confidence"] = float(cast(float, patch["confidence"]))
     if values.get("title") == "":
         values["title"] = row["title"]
     if values.get("artifact_description") == "":
@@ -3148,7 +3151,7 @@ def _optional_float(value: object) -> float | None:
     if value in (None, ""):
         return None
     try:
-        return float(value)
+        return float(cast(Any, value))
     except (TypeError, ValueError):
         return None
 
@@ -3157,13 +3160,13 @@ def _optional_int(value: object) -> int | None:
     if value in (None, ""):
         return None
     try:
-        return int(value)
+        return int(cast(Any, value))
     except (TypeError, ValueError):
         return None
 
 
 def _iso_or_none(value: object) -> str | None:
-    return value.isoformat() if hasattr(value, "isoformat") else str(value) if value is not None else None
+    return cast(Any, value).isoformat() if hasattr(value, "isoformat") else str(value) if value is not None else None
 
 
 def _best_fuzzy_match(
@@ -3208,7 +3211,7 @@ def _normalize_artifact_template_scopes(scopes: Iterable[dict[str, object]]) -> 
         scope_type = str(scope.get("scope_type") or "coverage_area").strip() or "coverage_area"
         scope_name = str(scope.get("scope_name") or "").strip()
         if scope_type == "any":
-            yield {"scope_type": "any", "scope_name": "", "normalized_scope_name": "", "weight": float(scope.get("weight") or 1.0)}
+            yield {"scope_type": "any", "scope_name": "", "normalized_scope_name": "", "weight": float(cast(float, scope.get("weight") or 1.0))}
             continue
         if not scope_name:
             continue
@@ -3217,7 +3220,7 @@ def _normalize_artifact_template_scopes(scopes: Iterable[dict[str, object]]) -> 
             "scope_id": _optional_int(scope.get("scope_id")),
             "scope_name": scope_name,
             "normalized_scope_name": str(scope.get("normalized_scope_name") or "").strip() or normalize_catalog_key(scope_name),
-            "weight": float(scope.get("weight") or 1.0),
+            "weight": float(cast(float, scope.get("weight") or 1.0)),
         }
 
 

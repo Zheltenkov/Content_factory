@@ -11,7 +11,8 @@ from difflib import SequenceMatcher
 from html.parser import HTMLParser
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 from xml.etree import ElementTree
 
 from pydantic import BaseModel, ConfigDict, Field

@@ -10,8 +10,8 @@ __all__ = [
     "CatalogSkill",
     "CurriculumCatalogRepo",
     "CurriculumExportV1",
-    "CurriculumProjectExportV1",
     "CurriculumPlanSaveResult",
+    "CurriculumProjectExportV1",
     "router",
     "run_catalog_pipeline",
 ]

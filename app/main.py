@@ -1,6 +1,6 @@
 from html import escape
 from pathlib import Path
-from typing import Sequence
+from collections.abc import Sequence
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response

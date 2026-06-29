@@ -18,14 +18,14 @@ from app.core.methodology.revision import (
 )
 
 __all__ = [
-    "MethodologyGate",
-    "MethodologyGateDecision",
-    "MethodologyGateInterrupt",
-    "MethodologyGatePolicy",
     "HumanApprovalCheckpoint",
     "HumanApprovalCheckpointPolicy",
     "MethodologistChangeRequest",
     "MethodologyAssistantCommandParser",
+    "MethodologyGate",
+    "MethodologyGateDecision",
+    "MethodologyGateInterrupt",
+    "MethodologyGatePolicy",
     "MethodologyRevisionRepo",
     "ScopedRevisionExecutor",
     "StageReviewIssue",

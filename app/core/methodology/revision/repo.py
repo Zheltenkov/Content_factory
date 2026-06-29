@@ -6,7 +6,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import base64
-from typing import Any, Iterator
+from typing import Any
+from collections.abc import Iterator
 
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection, Engine
