@@ -11,10 +11,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.methodology.gate import MethodologyGate, StageReviewResult
+from app.core.methodology.gate import MethodologyGate, StageReviewIssue, StageReviewResult
 from app.core.methodology.harness import Harness, resolve_profile
 from app.core.methodology.rubric import rule_issues_to_rubric
 from app.core.methodology.rules import GeneratedDoc, RuleIssue
+from app.modules.checker.didactic import DidacticQualityReport, evaluate_didactic
 from app.modules.checker.structural import StructuralAxisResult, evaluate_document
 
 CONTENT_STAGE = "checker.content_sufficiency"
@@ -39,12 +40,13 @@ class ContentSufficiencyResult(BaseModel):
 
 
 class CheckerDeterministicResult(BaseModel):
-    """Combined deterministic checker payload before didactic jury."""
+    """Combined checker payload with separate structural/content and didactic axes."""
 
     model_config = ConfigDict(extra="forbid")
 
     structural: StructuralAxisResult
     content: ContentSufficiencyResult
+    didactic: DidacticQualityReport
     rubric_json: dict[str, Any]
     gate_review: StageReviewResult
 
@@ -76,11 +78,12 @@ def evaluate_deterministic(
     *,
     profile_id: str = "_base",
     program_type: str | None = None,
+    learning_outcomes: list[str] | None = None,
     context: dict[str, Any] | None = None,
     gate: MethodologyGate | None = None,
     profile_root: Path = PROFILES_ROOT,
 ) -> CheckerDeterministicResult:
-    """Run structural C2 and C4 content checks and merge their rubric_json."""
+    """Run checker axes and keep structural rubric separate from didactic profile."""
 
     structural = evaluate_document(
         doc,
@@ -100,8 +103,60 @@ def evaluate_deterministic(
     )
     all_issues = [*structural.issues, *content.issues]
     rubric = rule_issues_to_rubric(all_issues)
+    didactic = evaluate_didactic(
+        doc.markdown,
+        learning_outcomes=learning_outcomes or _learning_outcomes_from_doc(doc),
+    )
     review = (gate or MethodologyGate()).review("evaluation", {"generated_doc": doc, "markdown": doc.markdown, "rubric_json": rubric})
-    return CheckerDeterministicResult(structural=structural, content=content, rubric_json=rubric, gate_review=review)
+    review = _merge_checker_gate_review(review, didactic)
+    return CheckerDeterministicResult(
+        structural=structural,
+        content=content,
+        didactic=didactic,
+        rubric_json=rubric,
+        gate_review=review,
+    )
+
+
+def _learning_outcomes_from_doc(doc: GeneratedDoc) -> list[str]:
+    raw = doc.metadata.get("learning_outcomes") if isinstance(doc.metadata, dict) else None
+    if isinstance(raw, list):
+        return [str(item).strip() for item in raw if str(item).strip()]
+    if isinstance(raw, str):
+        return [line.strip() for line in raw.splitlines() if line.strip()]
+    return []
+
+
+def _merge_checker_gate_review(review: StageReviewResult, didactic: DidacticQualityReport) -> StageReviewResult:
+    issues = list(review.issues)
+    repair_instructions = list(review.repair_instructions)
+    human_review_required = review.human_review_required or didactic.needs_human_review
+    if didactic.needs_human_review:
+        issues.append(
+            StageReviewIssue(
+                code="checker.didactic_review",
+                message=f"Дидактическая ось требует ревью: {didactic.overall_raw:.1f}/5.",
+                severity="critical",
+                repair_hint="Проверить связность, нагрузку, качество примеров и соответствие результатов обучения.",
+                details={"abstain_reasons": didactic.abstain_reasons},
+            )
+        )
+        repair_instructions.append("Проверить didactic-профиль отдельно от структурных 39 критериев.")
+    status = "failed" if human_review_required else review.status
+    return review.model_copy(
+        update={
+            "status": status,
+            "issues": issues,
+            "repair_instructions": repair_instructions,
+            "human_review_required": human_review_required,
+            "metrics": {
+                **review.metrics,
+                "didactic_overall_raw": didactic.overall_raw,
+                "didactic_calibrated": didactic.calibrated,
+            },
+            "evidence": {**review.evidence, "didactic": didactic.model_dump(mode="json")},
+        }
+    )
 
 
 @dataclass
@@ -125,6 +180,7 @@ class CheckerImprovementRun:
     improved_readme: str
     seed: dict[str, Any]
     rubric: dict[str, Any]
+    didactic: dict[str, Any]
     status: str = "completed"
     phase: str = "completed"
     progress: int = 100
@@ -135,6 +191,7 @@ class CheckerImprovementRun:
             "generation_request_id": self.generation_request_id,
             "markdown": self.improved_readme,
             "rubric": self.rubric,
+            "didactic": self.didactic,
             "assets": {},
         }
 
@@ -181,6 +238,7 @@ class CheckerImprovementService:
             improved_readme=improved,
             seed=merged_seed,
             rubric=evaluation.rubric_json,
+            didactic=evaluation.didactic.model_dump(mode="json"),
         )
         self.runs[run.generation_request_id] = run
         return run

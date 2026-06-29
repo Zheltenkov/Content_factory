@@ -3,6 +3,7 @@ const state = {
   cascade: null,
   currentPlan: null,
   currentProject: null,
+  templateProposals: [],
 };
 
 const el = {
@@ -16,11 +17,21 @@ const el = {
   title: document.getElementById("projectTitle"),
   order: document.getElementById("projectOrder"),
   block: document.getElementById("projectBlock"),
+  blockGoal: document.getElementById("projectBlockGoal"),
   hours: document.getElementById("projectHours"),
   description: document.getElementById("projectDescription"),
+  outcomesKnow: document.getElementById("projectOutcomesKnow"),
   outcomes: document.getElementById("projectOutcomes"),
+  outcomesSkills: document.getElementById("projectOutcomesSkills"),
   tools: document.getElementById("projectTools"),
+  software: document.getElementById("projectSoftware"),
+  materials: document.getElementById("projectMaterials"),
   story: document.getElementById("projectStory"),
+  format: document.getElementById("projectFormat"),
+  groupSize: document.getElementById("projectGroupSize"),
+  regenerateTemplateProposals: document.getElementById("regenerateTemplateProposals"),
+  templateProposalSummary: document.getElementById("templateProposalSummary"),
+  templateProposalList: document.getElementById("templateProposalList"),
   summaryPlans: document.getElementById("curriculumSummaryPlans"),
   summaryBlocks: document.getElementById("curriculumSummaryBlocks"),
   summaryProjects: document.getElementById("curriculumSummaryProjects"),
@@ -65,13 +76,16 @@ function renderPlanOptions(selectPlanId) {
 
 async function loadPlan(planId) {
   if (!planId) return;
-  const [planPayload, cascade] = await Promise.all([
+  const [planPayload, cascade, templateProposals] = await Promise.all([
     request(`/curriculum/plans/${planId}`),
     request(`/curriculum/plans/${planId}/cascade`),
+    request(`/curriculum/plans/${planId}/template-proposals`),
   ]);
   state.currentPlan = planPayload.plan;
   state.cascade = cascade;
+  state.templateProposals = templateProposals;
   renderBlocks();
+  renderTemplateProposals();
   renderSummary();
   await loadSelectedProject();
   setStatus(`${cascade.direction || "Направление"} · ${cascade.blocks.length} блоков`);
@@ -131,11 +145,18 @@ function fillForm(project) {
   el.title.value = project.title || "";
   el.order.value = project.order || 1;
   el.block.value = project.block || "";
+  el.blockGoal.value = project.block_goal || "";
   el.hours.value = project.hours_astro || 0;
   el.description.value = project.description || "";
+  el.outcomesKnow.value = (project.outcomes_know || []).join("\n");
   el.outcomes.value = (project.outcomes_can || project.learning_outcomes || []).join("\n");
+  el.outcomesSkills.value = (project.outcomes_skills || []).join("\n");
   el.tools.value = (project.required_tools || []).join(", ");
+  el.software.value = (project.required_software || []).join(", ");
+  el.materials.value = project.materials || "";
   el.story.value = project.storytelling || "";
+  el.format.value = project.format || "individual";
+  el.groupSize.value = project.group_size || 1;
 }
 
 function formProject() {
@@ -145,11 +166,18 @@ function formProject() {
     title: el.title.value.trim(),
     order: Number(el.order.value || 1),
     block: el.block.value.trim(),
+    block_goal: el.blockGoal.value.trim(),
     hours_astro: Number(el.hours.value || 0),
     description: el.description.value.trim(),
+    outcomes_know: splitLines(el.outcomesKnow.value),
     outcomes_can: splitLines(el.outcomes.value),
+    outcomes_skills: splitLines(el.outcomesSkills.value),
     required_tools: splitComma(el.tools.value),
+    required_software: splitComma(el.software.value),
+    materials: el.materials.value.trim(),
     storytelling: el.story.value.trim(),
+    format: el.format.value,
+    group_size: Number(el.groupSize.value || 1),
   };
 }
 
@@ -163,6 +191,102 @@ function splitComma(value) {
 
 function setStatus(message) {
   el.statusLine.textContent = message;
+}
+
+function renderTemplateProposals() {
+  const proposals = state.templateProposals || [];
+  const counts = proposals.reduce((acc, item) => {
+    acc[item.status] = (acc[item.status] || 0) + 1;
+    return acc;
+  }, {});
+  el.templateProposalSummary.innerHTML = [
+    metricCard("Всего", proposals.length),
+    metricCard("Open", counts.open || 0),
+    metricCard("Accepted", counts.accepted || 0),
+    metricCard("Rejected", counts.rejected || 0),
+  ].join("");
+  if (!proposals.length) {
+    el.templateProposalList.innerHTML = `<p class="empty-inline">Предложений нет. Сгенерируйте шаблоны по блокам текущего УП.</p>`;
+    return;
+  }
+  el.templateProposalList.innerHTML = proposals.map(renderTemplateProposal).join("");
+}
+
+function renderTemplateProposal(proposal) {
+  const disabled = proposal.status !== "open" ? "disabled" : "";
+  return `
+    <article class="reference-item" data-proposal-id="${proposal.id}">
+      <div class="inline-actions">
+        <strong>${escapeHtml(proposal.title)}</strong>
+        <span class="badge">${escapeHtml(proposal.status)}</span>
+      </div>
+      <div class="metrics">
+        ${metricCard("Type", proposal.artifact_family)}
+        ${metricCard("Confidence", Number(proposal.confidence || 0).toFixed(2))}
+        ${metricCard("Skills", (proposal.covered_skill_names || []).length)}
+      </div>
+      <label>Название<input data-field="title" value="${escapeAttr(proposal.title)}" ${disabled} /></label>
+      <div class="form-row two">
+        <label>Тип
+          <select data-field="artifact_family" ${disabled}>
+            ${option("analysis", proposal.artifact_family)}
+            ${option("document", proposal.artifact_family)}
+            ${option("configuration", proposal.artifact_family)}
+            ${option("design", proposal.artifact_family)}
+            ${option("production", proposal.artifact_family)}
+            ${option("practice", proposal.artifact_family)}
+          </select>
+        </label>
+        <label>Область<input data-field="scope_names" value="${escapeAttr((proposal.scope_names || []).join(", "))}" ${disabled} /></label>
+      </div>
+      <label>Описание<textarea data-field="artifact_description" rows="3" ${disabled}>${escapeHtml(proposal.artifact_description)}</textarea></label>
+      <label>Материалы<textarea data-field="materials_pattern" rows="3" ${disabled}>${escapeHtml(proposal.materials_pattern)}</textarea></label>
+      <label>Критерии<textarea data-field="validation_criteria" rows="3" ${disabled}>${escapeHtml(proposal.validation_criteria)}</textarea></label>
+      <p class="empty-inline">${escapeHtml(proposal.rationale || "")}</p>
+      <div class="inline-actions">
+        <button type="button" data-action="save" ${disabled}>Сохранить</button>
+        <button type="button" data-action="accept" ${disabled}>Принять</button>
+        <button type="button" data-action="reject" ${disabled}>Отклонить</button>
+      </div>
+    </article>
+  `;
+}
+
+function option(value, selected) {
+  return `<option value="${value}" ${value === selected ? "selected" : ""}>${value}</option>`;
+}
+
+function metricCard(label, value) {
+  return `<span><strong>${escapeHtml(String(value))}</strong> ${escapeHtml(label)}</span>`;
+}
+
+function proposalPatch(card) {
+  return {
+    title: fieldValue(card, "title"),
+    artifact_family: fieldValue(card, "artifact_family"),
+    scope_names: splitComma(fieldValue(card, "scope_names")),
+    artifact_description: fieldValue(card, "artifact_description"),
+    materials_pattern: fieldValue(card, "materials_pattern"),
+    validation_criteria: fieldValue(card, "validation_criteria"),
+  };
+}
+
+function fieldValue(card, field) {
+  return card.querySelector(`[data-field="${field}"]`)?.value?.trim() || "";
+}
+
+async function refreshTemplateProposals() {
+  const planId = Number(el.planSelect.value);
+  state.templateProposals = planId ? await request(`/curriculum/plans/${planId}/template-proposals`) : [];
+  renderTemplateProposals();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, "&#96;");
 }
 
 el.planSelect.addEventListener("change", () => loadPlan(Number(el.planSelect.value)).catch((error) => setStatus(error.message)));
@@ -182,6 +306,33 @@ el.form.addEventListener("submit", async (event) => {
   state.currentProject = saved;
   await loadPlan(Number(el.planSelect.value));
   setStatus("Сохранено");
+});
+
+el.regenerateTemplateProposals.addEventListener("click", async () => {
+  const planId = Number(el.planSelect.value);
+  if (!planId) return;
+  state.templateProposals = await request(`/curriculum/plans/${planId}/template-proposals/generate`, { method: "POST" });
+  renderTemplateProposals();
+  setStatus("Предложения шаблонов обновлены");
+});
+
+el.templateProposalList.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+  const card = button.closest("[data-proposal-id]");
+  const proposalId = Number(card?.dataset.proposalId);
+  if (!proposalId) return;
+  const action = button.dataset.action;
+  if (action === "save") {
+    await request(`/curriculum/template-proposals/${proposalId}`, {
+      method: "PATCH",
+      body: JSON.stringify(proposalPatch(card)),
+    });
+  } else {
+    await request(`/curriculum/template-proposals/${proposalId}/${action}`, { method: "POST" });
+  }
+  await refreshTemplateProposals();
+  setStatus("Предложение шаблона обновлено");
 });
 
 el.csvInput.addEventListener("change", async () => {

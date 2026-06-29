@@ -39,6 +39,21 @@ def test_u1_design_system_exposes_shared_primitives() -> None:
     assert "land.png" not in css
 
 
+def test_d3_reference_and_curriculum_use_unified_s21_skin() -> None:
+    css = (STATIC / "styles.css").read_text(encoding="utf-8")
+    curriculum = (STATIC / "curriculum" / "panel.html").read_text(encoding="utf-8")
+    reference = (STATIC / "reference" / "panel.html").read_text(encoding="utf-8")
+
+    assert "D3 unified S21 panel skin" in css
+    assert "Reference Spravochnik parity" in css
+    assert "body.s21-product.methodologist-product.page-reference" in css
+    assert "body.s21-product.methodologist-product" in css
+    assert 'class="s21-product methodologist-product page-curriculum"' in curriculum
+    assert 'class="s21-product methodologist-product page-reference"' in reference
+    assert "Единый S21-контур" in curriculum
+    assert "Единый S21-контур" in reference
+
+
 def test_module_panels_render_with_shared_layout_classes() -> None:
     client = TestClient(create_app())
     panels = {

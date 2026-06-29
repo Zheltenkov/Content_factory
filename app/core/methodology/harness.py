@@ -117,7 +117,8 @@ def resolve_profile(profile_id: str, root: Path, program_type: str | None = None
     content_model, pts = None, {}
     for prof in chain:
         if prof.get("program_types"):
-            pts = prof["program_types"]; break
+            pts = prof["program_types"]
+            break
     pt = program_type
     if pts:
         pt = pt or next(iter(pts))
@@ -128,7 +129,8 @@ def resolve_profile(profile_id: str, root: Path, program_type: str | None = None
     if content_model is None:                                # профиль без program_types (commerce/_base)
         for prof in chain:
             if prof.get("content_model"):
-                content_model = prof["content_model"]; break
+                content_model = prof["content_model"]
+                break
 
     # 1) активный content_model как ДЕФОЛТ в скиллы, что его декларируют
     for s in skills.values():

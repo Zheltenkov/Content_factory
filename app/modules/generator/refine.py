@@ -7,12 +7,12 @@ import re
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.config import get_thresholds
 from app.core.llm.prompt_loader import PromptNotFoundError, load_prompt
 from app.core.llm.structured import StructuredPrompt, complete_typed
-from app.core.methodology.gate import MethodologyGate, StageReviewResult
+from app.core.methodology.gate import MethodologyGate
 from app.core.methodology.harness import Harness, resolve_profile
 from app.core.methodology.rubric import rule_issues_to_rubric
 from app.core.methodology.rules import GeneratedDoc, RuleIssue
@@ -570,8 +570,6 @@ def _apply_patches(markdown: str, patches: list[RegenerationPatch], scopes: list
             failed.append(patch)
             errors.append(f"{patch.location_hint}: {error}")
             continue
-        target_text = result
-        offset = 0
         scope_label = ""
         if scopes:
             found = _find_in_scopes(result, patch.old_text, scopes)

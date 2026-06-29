@@ -8,6 +8,7 @@ from app.core.models import UPProject, UPSkeleton
 from app.main import create_app
 from app.modules.curriculum.repo import CurriculumCatalogRepo, create_catalog_schema
 from app.modules.curriculum.router import get_curriculum_repo
+from app.modules.reference.router import get_reference_repo
 
 
 def test_curriculum_plan_and_project_crud_router() -> None:
@@ -100,6 +101,76 @@ def test_curriculum_csv_import_export_and_panel_render() -> None:
     assert panel.status_code == 200
     assert 'id="planSelect"' in panel.text
     assert "/static/curriculum/panel.js" in panel.text
+    for control_id in (
+        'id="projectBlockGoal"',
+        'id="projectOutcomesKnow"',
+        'id="projectOutcomesSkills"',
+        'id="projectSoftware"',
+        'id="projectMaterials"',
+        'id="projectFormat"',
+        'id="projectGroupSize"',
+        'id="regenerateTemplateProposals"',
+        'id="templateProposalList"',
+    ):
+        assert control_id in panel.text
+    js = client.get("/static/curriculum/panel.js")
+    assert js.status_code == 200
+    for endpoint in (
+        "/curriculum/plans/${planId}/template-proposals",
+        "/curriculum/plans/${planId}/template-proposals/generate",
+        "/curriculum/template-proposals/${proposalId}",
+        "/curriculum/template-proposals/${proposalId}/${action}",
+    ):
+        assert endpoint in js.text
+
+
+def test_curriculum_template_proposal_lifecycle() -> None:
+    client = _client()
+    plan = _plan("Template proposal plan", [_project(1, "REST API"), _project(2, "Docker deploy")])
+    created = client.post("/curriculum/plans", json={"plan": plan.model_dump(mode="json"), "author_ref": "pytest"})
+    assert created.status_code == 201
+    plan_id = created.json()["plan_id"]
+
+    generated = client.post(f"/curriculum/plans/{plan_id}/template-proposals/generate")
+    assert generated.status_code == 200, generated.text
+    proposals = generated.json()
+    assert len(proposals) == 1
+    proposal_id = proposals[0]["id"]
+    assert proposals[0]["status"] == "open"
+    assert proposals[0]["scope_names"] == ["Backend"]
+
+    patched = client.patch(
+        f"/curriculum/template-proposals/{proposal_id}",
+        json={
+            "title": "Backend delivery template",
+            "artifact_description": "Delivery artifact for Backend projects.",
+            "validation_criteria": "Artifact is reproducible and tied to UP outcomes.",
+            "confidence": 0.91,
+        },
+    )
+    assert patched.status_code == 200
+    assert patched.json()["title"] == "Backend delivery template"
+    assert patched.json()["confidence"] == 0.91
+
+    accepted = client.post(f"/curriculum/template-proposals/{proposal_id}/accept")
+    assert accepted.status_code == 200, accepted.text
+    accepted_payload = accepted.json()
+    assert accepted_payload["status"] == "accepted"
+    assert accepted_payload["accepted_template_id"]
+
+    listed_templates = client.get("/reference/artifact-templates")
+    assert listed_templates.status_code == 200
+    assert any(item["title"] == "Backend delivery template" for item in listed_templates.json())
+
+    regenerated = client.post(f"/curriculum/plans/{plan_id}/template-proposals/generate")
+    assert regenerated.status_code == 200
+    statuses = {item["status"] for item in regenerated.json()}
+    assert {"accepted", "open"}.issubset(statuses)
+    open_proposal = next(item for item in regenerated.json() if item["status"] == "open")
+
+    rejected = client.post(f"/curriculum/template-proposals/{open_proposal['id']}/reject")
+    assert rejected.status_code == 200
+    assert rejected.json()["status"] == "rejected"
 
 
 def _client() -> TestClient:
@@ -112,6 +183,7 @@ def _client() -> TestClient:
     repo = CurriculumCatalogRepo(engine)
     app = create_app()
     app.dependency_overrides[get_curriculum_repo] = lambda: repo
+    app.dependency_overrides[get_reference_repo] = lambda: repo
     return TestClient(app)
 
 

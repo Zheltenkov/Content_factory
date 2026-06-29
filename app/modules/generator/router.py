@@ -67,6 +67,21 @@ class GeneratorReviewActionRequest(BaseModel):
     expected_outcome: str | None = None
 
 
+class GeneratorRegenerationScope(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+
+
+class GeneratorRegenerationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    instruction: str = Field(min_length=1)
+    scopes: list[GeneratorRegenerationScope] = Field(default_factory=list)
+
+
 def get_generator_repo() -> CurriculumCatalogRepo:
     return default_curriculum_repo()
 
@@ -189,6 +204,17 @@ def generator_assistant_command(run_id: str, payload: GeneratorReviewActionReque
     data = status_payload(run)
     data["assistant_command"] = command
     return data
+
+
+@router.post("/runs/{run_id}/regenerate")
+def regenerate_generator_run(run_id: str, payload: GeneratorRegenerationRequest) -> dict[str, object]:
+    try:
+        run = GENERATOR_RUNS.regenerate(run_id, payload.instruction, [item.model_dump(mode="json") for item in payload.scopes])
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if run is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="generator run not found")
+    return status_payload(run)
 
 
 def _execute_generation(run_id: str, payload: GenerateFromCurriculumRequest, repo: CurriculumCatalogRepo) -> None:

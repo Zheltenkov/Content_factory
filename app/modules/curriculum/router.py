@@ -100,6 +100,22 @@ class CurriculumCascadeResponse(BaseModel):
     blocks: list[CurriculumCascadeBlock]
 
 
+class CurriculumTemplateProposalPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = None
+    artifact_family: Literal["analysis", "document", "configuration", "design", "production", "practice"] | None = None
+    scope_type: Literal["taxonomy_node", "skill_group", "coverage_area", "any"] | None = None
+    scope_names: list[str] | None = None
+    artifact_description: str | None = None
+    project_name_pattern: str | None = None
+    materials_pattern: str | None = None
+    storytelling_pattern: str | None = None
+    validation_criteria: str | None = None
+    rationale: str | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
 def get_curriculum_repo() -> CurriculumCatalogRepo:
     return default_curriculum_repo()
 
@@ -178,6 +194,62 @@ def export_plan_csv(plan_id: int, repo: CurriculumCatalogRepo = Depends(get_curr
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="curriculum-plan-{plan_id}.csv"'},
     )
+
+
+@router.get("/plans/{plan_id}/template-proposals")
+def list_template_proposals(
+    plan_id: int,
+    status_filter: Literal["open", "accepted", "rejected"] | None = None,
+    repo: CurriculumCatalogRepo = Depends(get_curriculum_repo),
+) -> list[dict[str, object]]:
+    if repo.load_curriculum_plan(plan_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="curriculum plan not found")
+    return repo.list_curriculum_template_proposals(plan_id, status=status_filter)
+
+
+@router.post("/plans/{plan_id}/template-proposals/generate")
+def generate_template_proposals(
+    plan_id: int,
+    repo: CurriculumCatalogRepo = Depends(get_curriculum_repo),
+) -> list[dict[str, object]]:
+    proposals = repo.generate_curriculum_template_proposals(plan_id)
+    if not proposals and repo.load_curriculum_plan(plan_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="curriculum plan not found")
+    return proposals
+
+
+@router.patch("/template-proposals/{proposal_id}")
+def patch_template_proposal(
+    proposal_id: int,
+    payload: CurriculumTemplateProposalPatch,
+    repo: CurriculumCatalogRepo = Depends(get_curriculum_repo),
+) -> dict[str, object]:
+    updated = repo.update_curriculum_template_proposal(proposal_id, payload.model_dump(exclude_none=True))
+    if updated is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template proposal not found")
+    return updated
+
+
+@router.post("/template-proposals/{proposal_id}/accept")
+def accept_template_proposal(
+    proposal_id: int,
+    repo: CurriculumCatalogRepo = Depends(get_curriculum_repo),
+) -> dict[str, object]:
+    accepted = repo.accept_curriculum_template_proposal(proposal_id)
+    if accepted is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template proposal not found")
+    return accepted
+
+
+@router.post("/template-proposals/{proposal_id}/reject")
+def reject_template_proposal(
+    proposal_id: int,
+    repo: CurriculumCatalogRepo = Depends(get_curriculum_repo),
+) -> dict[str, object]:
+    rejected = repo.reject_curriculum_template_proposal(proposal_id)
+    if rejected is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template proposal not found")
+    return rejected
 
 
 @router.put("/plans/{plan_id}", response_model=CurriculumPlanResponse)

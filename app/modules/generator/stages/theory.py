@@ -288,7 +288,6 @@ def _strip_static_leaks(text: str, topic_text: str) -> str:
     kept: list[str] = []
     topic_low = topic_text.lower()
     for sentence in _split_sentences(text):
-        low = sentence.lower()
         if STATIC_LEAK_RE.search(sentence) and not any(token in topic_low for token in ("p2p", "peer", "репозитор")):
             continue
         kept.append(sentence)

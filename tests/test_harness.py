@@ -89,7 +89,10 @@ if __name__ == "__main__":
     ok = 0
     for t in tests:
         try:
-            t(); print(f"  PASS  {t.__name__}"); ok += 1
+            t()
+            print(f"  PASS  {t.__name__}")
+            ok += 1
         except Exception:
-            print(f"  FAIL  {t.__name__}"); traceback.print_exc()
+            print(f"  FAIL  {t.__name__}")
+            traceback.print_exc()
     print(f"\n{ok}/{len(tests)} passed")

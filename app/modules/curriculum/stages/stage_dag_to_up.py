@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.core.models import BLOOM_RANK, Competency, CompetencyRef, UPProject, UPSkeleton
-from app.modules.curriculum.planner import CurriculumBlock, PlanNode, ProjectBlueprint, SkillOccurrence, build_curriculum_blocks
+from app.modules.curriculum.planner import PlanNode, ProjectBlueprint, SkillOccurrence, build_curriculum_blocks
 
 
 def run(spec: dict[str, object] | None, competencies: list[Competency], dag_payload: dict[str, object]) -> UPSkeleton:

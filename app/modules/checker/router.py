@@ -22,6 +22,7 @@ class CheckerEvaluateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     markdown: str = Field(min_length=1)
+    learning_outcomes: list[str] = Field(default_factory=list)
     project_id: str | None = None
     profile_id: str = "_base"
     program_type: str | None = None
@@ -61,7 +62,12 @@ class CheckerImproveGenerateRequest(BaseModel):
 @router.post("/evaluate")
 def evaluate(payload: CheckerEvaluateRequest) -> dict[str, Any]:
     doc = GeneratedDoc(markdown=payload.markdown, project_id=payload.project_id, metadata=payload.metadata)
-    result = evaluate_deterministic(doc, profile_id=payload.profile_id, program_type=payload.program_type)
+    result = evaluate_deterministic(
+        doc,
+        profile_id=payload.profile_id,
+        program_type=payload.program_type,
+        learning_outcomes=payload.learning_outcomes,
+    )
     return result.model_dump(mode="json")
 
 

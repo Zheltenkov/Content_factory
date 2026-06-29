@@ -82,7 +82,10 @@ async function checkReadme(markdown) {
   const response = await fetch("/checker/evaluate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ markdown: originalReadme }),
+    body: JSON.stringify({
+      markdown: originalReadme,
+      learning_outcomes: lines("learningOutcomes"),
+    }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -94,7 +97,7 @@ async function checkReadme(markdown) {
   originalIssues = issues;
   renderScore(result, issues);
   renderIssues(issues);
-  renderMetricsVersion("original", result.rubric_json || {});
+  renderMetricsVersion("original", result.rubric_json || {}, result.didactic || null);
   output.textContent = JSON.stringify(issues, null, 2);
   statusLine.textContent = "Готово";
   improveButton.disabled = !originalReadme;
@@ -169,7 +172,7 @@ async function pollImprovementStatus(generationRequestId) {
   }
   improvedReadme = data.result?.markdown || "";
   improvedIssues = data.result?.rubric?.issues || [];
-  renderMetricsVersion("improved", data.result?.rubric || {});
+  renderMetricsVersion("improved", data.result?.rubric || {}, data.result?.didactic || null);
   metricsSwitcher.hidden = false;
   switchCheckerMetricsVersion("improved");
   finishRunView("completed");
@@ -229,14 +232,17 @@ function renderTextStats(markdown) {
   ].join("");
 }
 
-function renderMetricsVersion(version, rubric) {
+function renderMetricsVersion(version, rubric, didactic) {
   const issues = rubric.issues || [];
+  const didacticScore = didactic?.overall_raw != null ? `${Number(didactic.overall_raw).toFixed(1)}/5` : "—";
   const target = version === "improved" ? metricsImproved : metricsOriginal;
   target.innerHTML = [
     metricCard("Passed", rubric.passed ? "Да" : "Нет"),
     metricCard("Issues", issues.length),
     metricCard("Hard", issues.filter((issue) => issue.severity === "hard").length),
     metricCard("Soft", issues.filter((issue) => issue.severity !== "hard").length),
+    metricCard("Didactic", didacticScore),
+    metricCard("Didactic review", didactic?.needs_human_review ? "Да" : "Нет"),
   ].join("");
 }
 

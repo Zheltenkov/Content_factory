@@ -23,28 +23,63 @@ TILE_MARKER = "{{ module_tiles }}"
 TILE_DETAILS = {
     "generator": {
         "index": "РЕЖИМ / 01",
+        "title": "Генерация README",
+        "description": "Полный пайплайн: от паспорта программы до итогового документа с теорией, практикой и критериями.",
+        "cta": "Перейти к генератору",
         "art": "art-generate",
-        "bullets": ("УП из общей БД", "README, теория и практика", "Gate и методология"),
+        "bullets": (
+            "Анализ учебного плана и результатов обучения",
+            "План практики, задачи и критерии",
+            "Диаграммы, формулы, отчёты",
+        ),
     },
     "checker": {
         "index": "РЕЖИМ / 02",
+        "title": "Проверка README",
+        "description": "Загрузите готовый README.md и получите разбор по 39 критериям с понятными комментариями.",
+        "cta": "Перейти к проверке",
         "art": "art-check",
-        "bullets": ("Структурная ось", "Дидактическое жюри", "Reverse-extraction"),
+        "bullets": (
+            "Все 39 критериев качества",
+            "Что улучшить и почему — текстом",
+            "Метрики и структура документа",
+        ),
     },
     "translator": {
         "index": "РЕЖИМ / 03",
+        "title": "Перевод документов и видео",
+        "description": "Переведите README или Markdown с сохранением структуры. Также — видео и субтитры.",
+        "cta": "Перейти к переводу",
         "art": "art-translate",
-        "bullets": ("Документы", "Видео и субтитры", "Сохранение структуры"),
+        "bullets": (
+            "Markdown, формулы и таблицы целые",
+            "Поддержка Mermaid-диаграмм",
+            "Субтитры VTT/SRT и видео-перевод",
+        ),
     },
     "curriculum": {
         "index": "РЕЖИМ / 04",
+        "title": "Учебный план",
+        "description": "Каталог, планирование и row-edit учебных проектов с привязкой к единой методологической базе.",
+        "cta": "Перейти к УП",
         "art": "art-curriculum",
-        "bullets": ("Импорт CSV", "Редактор УП", "Экспорт из БД"),
+        "bullets": (
+            "Иерархия планов и проектов",
+            "Редактор строк и результатов обучения",
+            "Предложения шаблонов артефактов",
+        ),
     },
     "reference": {
         "index": "РЕЖИМ / 05",
+        "title": "Справочник",
+        "description": "Каталог компетенций, skills, индикаторов и review queue для общей методологической базы.",
+        "cta": "Перейти к справочнику",
         "art": "art-reference",
-        "bullets": ("Компетенции", "Skills и индикаторы", "Review queue"),
+        "bullets": (
+            "Компетенции и профили",
+            "Skills и индикаторы",
+            "Intake, архив и review queue",
+        ),
     },
 }
 
@@ -152,15 +187,20 @@ def _render_tile(module: dict[str, object]) -> str:
     bullets = "".join(f"<li>{escape(item)}</li>" for item in details.get("bullets", ()))
     index = str(details.get("index", "МОДУЛЬ"))
     art = _render_tile_art(str(details.get("art", "art-generic")), module_id, index)
+    title = str(details.get("title", module["title"]))
+    description = str(details.get("description", tile["subtitle"]))
+    cta = str(details.get("cta", "Открыть"))
     return (
         f'<article class="module-tile dashboard-mode-card" data-action="{escape(str(tile["action"]))}" '
         f'data-panel="{escape(str(module["ui_panel"]))}">'
         f"{art}"
         '<div class="dashboard-card-body">'
-        f"<h2>{escape(str(module['title']))}</h2>"
-        f"<p>{escape(str(tile['subtitle']))}</p>"
+        '<div class="dashboard-card-copy">'
+        f"<h2>{escape(title)}</h2>"
+        f"<p>{escape(description)}</p>"
+        "</div>"
         f"<ul>{bullets}</ul>"
-        f'<a class="dashboard-primary-action" href="{panel_url}">Открыть <span>→</span></a>'
+        f'<a class="dashboard-primary-action" href="{panel_url}">{escape(cta)} <span>→</span></a>'
         "</div>"
         "</article>"
     )
@@ -168,19 +208,112 @@ def _render_tile(module: dict[str, object]) -> str:
 
 def _render_tile_art(art_class: str, module_id: str, index: str = "МОДУЛЬ") -> str:
     if module_id == "generator":
-        body = '<div class="art-doc light"></div><span class="art-plus">+</span><div class="art-doc dark"><span></span></div>'
+        body = (
+            '<svg class="dashboard-card-illust" width="200" height="140" viewBox="0 0 200 140" fill="none" '
+            'aria-hidden="true">'
+            '<rect x="20" y="20" width="60" height="80" rx="6" fill="#fff" stroke="#0f1419" stroke-width="1.2"/>'
+            '<rect x="30" y="32" width="40" height="3" rx="1.5" fill="#0f1419"/>'
+            '<rect x="30" y="42" width="32" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="30" y="48" width="36" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="30" y="54" width="28" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="30" y="64" width="40" height="3" rx="1.5" fill="#0f1419"/>'
+            '<rect x="30" y="74" width="34" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="30" y="80" width="38" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="30" y="86" width="22" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="100" y="40" width="60" height="80" rx="6" fill="#0f1419"/>'
+            '<rect x="110" y="52" width="40" height="3" rx="1.5" fill="#fff"/>'
+            '<rect x="110" y="62" width="32" height="2" rx="1" fill="#fff" opacity=".5"/>'
+            '<rect x="110" y="68" width="36" height="2" rx="1" fill="#fff" opacity=".5"/>'
+            '<rect x="110" y="74" width="28" height="2" rx="1" fill="#fff" opacity=".5"/>'
+            '<rect x="110" y="86" width="22" height="22" rx="4" fill="#fff" opacity=".15"/>'
+            '<path d="M115 97l5 5 9-9" stroke="#fff" stroke-width="1.6" fill="none" '
+            'stroke-linecap="round" stroke-linejoin="round"/>'
+            '<path d="M82 60h16M90 56v8" stroke="#0f1419" stroke-width="1.4" '
+            'stroke-linecap="round"/>'
+            "</svg>"
+        )
     elif module_id == "checker":
         body = (
-            '<div class="art-report"><span class="art-line short"></span><span class="art-line wide"></span>'
-            '<span class="art-line"></span><div class="art-report-score">87%</div>'
-            '<div class="art-report-tags"><span>35 ✓</span><span>4 ×</span></div></div>'
+            '<svg class="dashboard-card-illust" width="200" height="140" viewBox="0 0 200 140" fill="none" '
+            'aria-hidden="true">'
+            '<rect x="40" y="22" width="120" height="100" rx="6" fill="#fff" stroke="#0f1419" stroke-width="1.2"/>'
+            '<rect x="50" y="34" width="40" height="3" rx="1.5" fill="#0f1419"/>'
+            '<circle cx="142" cy="36" r="14" fill="#0f1419"/>'
+            '<text x="142" y="40" font-size="9" font-weight="700" font-family="Inter" fill="#fff" '
+            'text-anchor="middle">87%</text>'
+            '<rect x="50" y="58" width="100" height="6" rx="2" fill="#eef0ec"/>'
+            '<rect x="50" y="58" width="84" height="6" rx="2" fill="#0f1419"/>'
+            '<rect x="50" y="74" width="100" height="3" rx="1" fill="#0f1419" opacity=".25"/>'
+            '<rect x="50" y="82" width="76" height="3" rx="1" fill="#0f1419" opacity=".25"/>'
+            '<rect x="50" y="92" width="42" height="14" rx="3" fill="#eaf4ee"/>'
+            '<text x="71" y="102" font-size="8" font-weight="600" font-family="Inter" fill="#2f7a4d" '
+            'text-anchor="middle">35 ✓</text>'
+            '<rect x="98" y="92" width="42" height="14" rx="3" fill="#f7ebe7"/>'
+            '<text x="119" y="102" font-size="8" font-weight="600" font-family="Inter" fill="#b54a3b" '
+            'text-anchor="middle">4 ✕</text>'
+            "</svg>"
         )
     elif module_id == "translator":
-        body = '<div class="art-lang-card light">RU<span></span></div><span class="art-arrow">→</span><div class="art-lang-card dark">EN<span></span></div>'
+        body = (
+            '<svg class="dashboard-card-illust" width="200" height="140" viewBox="0 0 200 140" fill="none" '
+            'aria-hidden="true">'
+            '<rect x="20" y="30" width="76" height="80" rx="6" fill="#fff" stroke="#0f1419" stroke-width="1.2"/>'
+            '<text x="58" y="52" font-size="11" font-weight="600" font-family="Inter" fill="#0f1419" '
+            'text-anchor="middle">RU</text>'
+            '<rect x="30" y="62" width="56" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="30" y="68" width="48" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="30" y="74" width="52" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<rect x="30" y="80" width="40" height="2" rx="1" fill="#0f1419" opacity=".3"/>'
+            '<path d="M100 70h12M108 66l4 4-4 4" stroke="#0f1419" stroke-width="1.4" '
+            'stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+            '<rect x="116" y="30" width="76" height="80" rx="6" fill="#0f1419"/>'
+            '<text x="154" y="52" font-size="11" font-weight="600" font-family="Inter" fill="#fff" '
+            'text-anchor="middle">EN</text>'
+            '<rect x="126" y="62" width="56" height="2" rx="1" fill="#fff" opacity=".5"/>'
+            '<rect x="126" y="68" width="48" height="2" rx="1" fill="#fff" opacity=".5"/>'
+            '<rect x="126" y="74" width="52" height="2" rx="1" fill="#fff" opacity=".5"/>'
+            '<rect x="126" y="80" width="40" height="2" rx="1" fill="#fff" opacity=".5"/>'
+            "</svg>"
+        )
     elif module_id == "curriculum":
-        body = '<div class="art-plan"><span>01</span><span>02</span><span>03</span><strong>УП</strong></div>'
+        body = (
+            '<svg class="dashboard-card-illust" width="200" height="140" viewBox="0 0 200 140" fill="none" '
+            'aria-hidden="true">'
+            '<rect x="26" y="28" width="148" height="86" rx="6" fill="#fff" stroke="#0f1419" stroke-width="1.2"/>'
+            '<rect x="38" y="40" width="34" height="24" rx="4" fill="#f4f5f1"/>'
+            '<text x="55" y="56" font-size="10" font-weight="700" font-family="Inter" fill="#0f1419" '
+            'text-anchor="middle">01</text>'
+            '<rect x="82" y="40" width="34" height="24" rx="4" fill="#f4f5f1"/>'
+            '<text x="99" y="56" font-size="10" font-weight="700" font-family="Inter" fill="#0f1419" '
+            'text-anchor="middle">02</text>'
+            '<rect x="126" y="40" width="34" height="24" rx="4" fill="#f4f5f1"/>'
+            '<text x="143" y="56" font-size="10" font-weight="700" font-family="Inter" fill="#0f1419" '
+            'text-anchor="middle">03</text>'
+            '<rect x="38" y="76" width="122" height="26" rx="5" fill="#0f1419"/>'
+            '<text x="99" y="93" font-size="11" font-weight="700" font-family="Inter" fill="#2ed18a" '
+            'text-anchor="middle">УП</text>'
+            '<path d="M55 64v12M99 64v12M143 64v12" stroke="#0f1419" opacity=".25" stroke-width="1.2"/>'
+            "</svg>"
+        )
     elif module_id == "reference":
-        body = '<div class="art-catalog"><span></span><span></span><span></span><strong>CAT</strong></div>'
+        body = (
+            '<svg class="dashboard-card-illust" width="200" height="140" viewBox="0 0 200 140" fill="none" '
+            'aria-hidden="true">'
+            '<rect x="34" y="24" width="118" height="96" rx="6" fill="#fff" stroke="#0f1419" stroke-width="1.2"/>'
+            '<rect x="48" y="38" width="42" height="8" rx="2" fill="#0f1419"/>'
+            '<rect x="48" y="56" width="90" height="4" rx="2" fill="#0f1419" opacity=".28"/>'
+            '<rect x="48" y="68" width="72" height="4" rx="2" fill="#0f1419" opacity=".28"/>'
+            '<rect x="48" y="80" width="84" height="4" rx="2" fill="#0f1419" opacity=".28"/>'
+            '<rect x="48" y="94" width="44" height="16" rx="4" fill="#eaf4ee"/>'
+            '<text x="70" y="105" font-size="8" font-weight="700" font-family="Inter" fill="#2f7a4d" '
+            'text-anchor="middle">skill</text>'
+            '<rect x="102" y="94" width="36" height="16" rx="4" fill="#f4f5f1"/>'
+            '<text x="120" y="105" font-size="8" font-weight="700" font-family="Inter" fill="#0f1419" '
+            'text-anchor="middle">CAT</text>'
+            '<rect x="132" y="44" width="34" height="34" rx="6" fill="#0f1419"/>'
+            '<path d="M141 61h16M149 53v16" stroke="#2ed18a" stroke-width="1.6" stroke-linecap="round"/>'
+            "</svg>"
+        )
     else:
         body = f'<span class="module-icon">{escape(module_id[:2].upper())}</span>'
     return f'<div class="dashboard-card-art {escape(art_class)}"><div class="dashboard-card-index">{escape(index)}</div>{body}</div>'

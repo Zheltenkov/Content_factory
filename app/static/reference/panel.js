@@ -1385,6 +1385,11 @@ function setListMode(mode) {
 
 function setPageChrome(mode) {
   const meta = MODE_META[mode] || MODE_META.skills;
+  if (mode === "skills" && window.location.pathname.startsWith("/catalog-admin/groups")) {
+    el.pageTitle.textContent = "Каталог DB";
+    el.pageSubtitle.textContent = "Черновой CRUD поверх целевой структуры competency group -> skill -> indicator.";
+    return;
+  }
   el.pageTitle.textContent = meta[0];
   el.pageSubtitle.textContent = meta[1];
   if (mode !== "workspace") el.intakePrimaryAction.textContent = "Рабочий стол";

@@ -14,7 +14,12 @@ vet_jury_models.py — отсев кандидатов в дидактическ
 
 OPENROUTER_API_KEY или OPEN_ROUTER_API_KEY берётся из env или из локального .env.
 """
-import os, sys, json, re, urllib.request, urllib.error
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 API = "https://openrouter.ai/api/v1/chat/completions"
@@ -139,8 +144,10 @@ def parse_json(txt):
     except Exception:
         m = re.search(r"\{.*\}", txt, re.S)  # repair: вытащить первый {...}
         if m:
-            try: return json.loads(m.group(0))
-            except Exception: return None
+            try:
+                return json.loads(m.group(0))
+            except Exception:
+                return None
         return None
 
 def vet(model):
@@ -152,7 +159,8 @@ def vet(model):
             try:
                 raw = call(model, fr["text"], use_schema)
                 verdict = parse_json(raw)
-                if verdict: break
+                if verdict:
+                    break
             except urllib.error.HTTPError as e:
                 raw = f"HTTP {e.code}: {e.read().decode()[:200]}"
             except Exception as e:

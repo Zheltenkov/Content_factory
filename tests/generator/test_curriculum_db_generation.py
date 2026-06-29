@@ -120,11 +120,24 @@ def test_generator_async_run_polling_review_and_archive() -> None:
     assert approved.status_code == 200, approved.text
     assert "Методологические правки" in approved.json()["result"]["document"]["markdown"]
 
+    regenerated = client.post(
+        f"/generator/runs/{run_id}/regenerate",
+        json={
+            "instruction": "замени «REST API» на «REST API v2»",
+            "scopes": [{"title": "REST API", "start_line": 1, "end_line": 20}],
+        },
+    )
+    assert regenerated.status_code == 200, regenerated.text
+    regenerated_payload = regenerated.json()
+    assert "REST API v2" in regenerated_payload["result"]["document"]["markdown"]
+    assert regenerated_payload["result"]["document"]["metadata"]["regeneration_report"]["changed"] is True
+    assert regenerated_payload["result"]["document"]["metadata"]["regeneration_history"][-1]["scopes"][0]["title"] == "REST API"
+
     archive = client.get(f"/generator/runs/{run_id}/archive")
     assert archive.status_code == 200, archive.text
     with zipfile.ZipFile(io.BytesIO(archive.content)) as bundle:
         assert {"README.md", "rubric.json", "report.json"}.issubset(set(bundle.namelist()))
-        assert "REST API" in bundle.read("README.md").decode("utf-8")
+        assert "REST API v2" in bundle.read("README.md").decode("utf-8")
 
 
 def _repo() -> CurriculumCatalogRepo:

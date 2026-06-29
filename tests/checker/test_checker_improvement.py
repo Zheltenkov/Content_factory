@@ -38,6 +38,8 @@ def test_checker_improvement_flow_extracts_generates_diff_and_downloads() -> Non
     assert payload["status"] == "completed"
     assert "# Backend API" in payload["result"]["markdown"]
     assert "Критерии сдачи" in payload["result"]["markdown"]
+    assert "didactic" in payload["result"]
+    assert payload["result"]["didactic"]["overall_raw"] >= 1.0
 
     diff = client.get(f"/checker/improve/diff/{extract_payload['request_id']}")
     assert diff.status_code == 200
@@ -87,6 +89,8 @@ def test_checker_panel_exposes_legacy_improvement_controls_and_real_endpoints() 
         "/checker/improve/status/",
         "/checker/improve/diff/",
         "/checker/improve/download/",
+        "learning_outcomes: lines(\"learningOutcomes\")",
+        "result.didactic",
     ):
         assert endpoint in js.text
     for event_hook in (

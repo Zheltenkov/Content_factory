@@ -13,7 +13,7 @@ from app.core.config import get_thresholds
 from app.core.llm import StructuredPrompt, complete_typed, load_prompt
 from app.core.llm.client import create_llm_client
 from app.modules.checker.signals import collect_signals as collect_checker_signals
-from app.modules.checker.didactic.debate import DebateResult, run_debate
+from app.modules.checker.didactic.debate import run_debate
 
 ClientFactory = Callable[[str], Any]
 

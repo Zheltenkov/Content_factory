@@ -56,9 +56,12 @@ def test_w6_u7_dashboard_tiles_drive_live_module_workflows() -> None:
         "curriculum": "/up",
         "reference": "/catalog-admin/groups",
     }
-    assert "Alembic: <strong>018</strong>" in dashboard.text
+    assert "Активных задач: <strong>0</strong>" in dashboard.text
+    assert "Недавние запуски" in dashboard.text
+    assert dashboard.text.count('class="module-tile dashboard-mode-card"') == 5
     for module in payload:
         panel = module["ui_panel"]
+        assert module["dashboard_tile"]
         assert f'data-panel="{panel}"' in dashboard.text
         assert f'href="{route_by_module[module["id"]]}"' in dashboard.text
         route_response = client.get(route_by_module[module["id"]])
@@ -143,6 +146,8 @@ def _exercise_checker(client: TestClient, generated_markdown: str) -> None:
     payload = broken.json()
     codes = {issue["code"] for issue in payload["rubric_json"]["issues"]}
     assert payload["gate_review"]["human_review_required"] is True
+    assert payload["didactic"]["overall_raw"] >= 1.0
+    assert "didactic_overall_raw" in payload["gate_review"]["metrics"]
     assert "readme_structure.h1_first" in codes
     assert "document_integrity.unclosed_fence" in codes
 

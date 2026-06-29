@@ -4,27 +4,27 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="application-name" content="Content Factory" />
-    <title>Учебный план · Рабочий контур методолога</title>
+    <title>Учебный план · Единый S21-контур</title>
     <link rel="stylesheet" href="/static/styles.css" />
     <link rel="stylesheet" href="/static/styles.css?v=s21-legacy-design" />
   </head>
-  <body class="methodologist-product page-curriculum">
+  <body class="s21-product methodologist-product page-curriculum">
     <header class="topbar">
       <div class="topbar-inner">
         <a class="wordmark" href="/app">
           <img class="wordmark-logo" src="/static/school21-sber-logo.jpg?v=1" alt="Школа 21" />
           <span>
-            <span class="wordmark-name">Рабочий контур методолога</span>
+            <span class="wordmark-name">Единый S21-контур</span>
           </span>
         </a>
         <nav class="nav" aria-label="Основные разделы">
           <a href="/app" class="nav-link">Главная</a>
           <a href="/app/generate" class="nav-link">Генерация</a>
-          <a href="/app/check" class="nav-link">Аудитор</a>
+          <a href="/app/check" class="nav-link">Проверка</a>
           <a href="/app/translate" class="nav-link">Перевод</a>
           <a href="/up" class="nav-link active">Учебный план</a>
           <a href="/catalog-admin/groups" class="nav-link">Справочник</a>
-          <a href="/app/instruction" class="nav-link">Документация</a>
+          <a href="/app/instruction" class="nav-link">Инструкция</a>
         </nav>
       </div>
     </header>
@@ -107,25 +107,70 @@
               </label>
             </div>
             <label>
+              Цель блока
+              <textarea id="projectBlockGoal" name="block_goal" rows="3"></textarea>
+            </label>
+            <label>
               Описание
               <textarea id="projectDescription" name="description" rows="4"></textarea>
             </label>
             <label>
-              Образовательные результаты
+              Узнает
+              <textarea id="projectOutcomesKnow" name="outcomes_know" rows="4"></textarea>
+            </label>
+            <label>
+              Умеет
               <textarea id="projectOutcomes" name="outcomes_can" rows="5"></textarea>
+            </label>
+            <label>
+              Навыки
+              <textarea id="projectOutcomesSkills" name="outcomes_skills" rows="4"></textarea>
             </label>
             <label>
               Инструменты
               <input id="projectTools" name="required_tools" />
             </label>
             <label>
+              ПО и окружение
+              <input id="projectSoftware" name="required_software" />
+            </label>
+            <label>
+              Материалы
+              <textarea id="projectMaterials" name="materials" rows="3"></textarea>
+            </label>
+            <label>
               Сторителлинг
               <textarea id="projectStory" name="storytelling" rows="4"></textarea>
             </label>
+            <div class="form-row two">
+              <label>
+                Формат
+                <select id="projectFormat" name="format">
+                  <option value="individual">individual</option>
+                  <option value="group">group</option>
+                  <option value="pair">pair</option>
+                  <option value="workshop">workshop</option>
+                  <option value="unknown">unknown</option>
+                </select>
+              </label>
+              <label>
+                Размер группы
+                <input id="projectGroupSize" name="group_size" type="number" min="1" />
+              </label>
+            </div>
             <div class="form-actions">
               <button id="saveProject" class="action-btn action-btn-primary" type="submit">Сохранить</button>
             </div>
           </form>
+
+          <section class="editor-panel" aria-label="Предложения шаблонов УП">
+            <div class="inline-actions">
+              <h2>Шаблоны УП</h2>
+              <button id="regenerateTemplateProposals" class="action-btn action-btn-primary" type="button">Сгенерировать заново</button>
+            </div>
+            <div id="templateProposalSummary" class="metrics"></div>
+            <div id="templateProposalList" class="reference-list compact"></div>
+          </section>
         </section>
       </section>
     </main>

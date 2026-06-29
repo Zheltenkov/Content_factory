@@ -343,15 +343,29 @@ function renderArtifacts(result) {
 }
 
 function renderRegenerationSelector(markdown) {
-  const headings = markdown.split("\n").filter((line) => /^#{1,3}\s+/.test(line)).slice(0, 24);
+  const headings = regenerationHeadings(markdown).slice(0, 24);
   $("regenerationSectionSelector").innerHTML = headings.length
-    ? headings.map((line, index) => {
-        const level = line.match(/^#+/)[0].length;
-        const title = line.replace(/^#+\s+/, "");
-        return `<label class="regeneration-section-option level-${level}"><span class="regeneration-section-row"><input type="checkbox" value="${index}" /><strong>${escapeHtml(title)}</strong></span><small>Раздел README</small></label>`;
+    ? headings.map((heading, index) => {
+        return `<label class="regeneration-section-option level-${heading.level}"><span class="regeneration-section-row"><input type="checkbox" value="${index}" data-title="${escapeAttr(heading.title)}" data-start-line="${heading.startLine}" data-end-line="${heading.endLine}" /><strong>${escapeHtml(heading.title)}</strong></span><small>Строки ${heading.startLine}-${heading.endLine}</small></label>`;
       }).join("")
     : '<div class="regeneration-empty-note">В README не найдены заголовки для точечной перегенерации.</div>';
   renderToc("regenToc", markdown);
+}
+
+function regenerationHeadings(markdown) {
+  const lines = String(markdown || "").split("\n");
+  const headings = [];
+  lines.forEach((line, index) => {
+    const match = line.match(/^(#{1,3})\s+(.+?)\s*$/);
+    if (match) {
+      headings.push({ title: match[2], level: match[1].length, startLine: index + 1, endLine: lines.length });
+    }
+  });
+  headings.forEach((heading, index) => {
+    const next = headings.find((candidate, candidateIndex) => candidateIndex > index && candidate.level <= heading.level);
+    heading.endLine = next ? next.startLine - 1 : lines.length;
+  });
+  return headings;
 }
 
 function startRunChrome() {
@@ -731,7 +745,7 @@ function bindEvents() {
     setValue("regenerationGlobalComment", "");
   });
   $("fillFailedCriteriaBtn").addEventListener("click", fillCommentsFromFailedCriteria);
-  $("regenerateBtn").addEventListener("click", runGeneration);
+  $("regenerateBtn").addEventListener("click", regenerateCurrentRun);
   $("readmeModeMarkdown").addEventListener("click", () => setReadmeMode("markdown"));
   $("readmeModePreview").addEventListener("click", () => setReadmeMode("preview"));
   $("readmeModeCompare").addEventListener("click", compareCurrentResult);
@@ -779,6 +793,39 @@ function compareCurrentResult() {
 function fillCommentsFromFailedCriteria() {
   const issues = asList(state.currentResult?.rule_issues).concat(asList(state.currentResult?.gate_review?.issues));
   setValue("regenerationComments", issues.length ? issues.map((issue) => `- ${issue.code || issue.kind}: ${issue.message}`).join("\n") : "Непройденных критериев нет. Уточните желаемую правку вручную.");
+}
+
+function selectedRegenerationScopes() {
+  return Array.from(document.querySelectorAll("#regenerationSectionSelector input:checked")).map((input) => ({
+    title: input.dataset.title || "README section",
+    start_line: Number(input.dataset.startLine || 1),
+    end_line: Number(input.dataset.endLine || input.dataset.startLine || 1),
+  }));
+}
+
+async function regenerateCurrentRun(event) {
+  event?.preventDefault();
+  if (!state.currentRunId || !state.currentResult) {
+    await runGeneration(event);
+    return;
+  }
+  const instruction = value("regenerationComments") || value("regenerationGlobalComment");
+  if (!instruction.trim()) {
+    setStatus("Опишите правку для перегенерации.", "warning");
+    activateTab("generatorRegen");
+    return;
+  }
+  setStatus("Перегенерирую выбранные части README...", "running");
+  const data = await request(`/generator/runs/${state.currentRunId}/regenerate`, {
+    method: "POST",
+    body: JSON.stringify({ instruction, scopes: selectedRegenerationScopes() }),
+  });
+  state.currentReview = data.methodology || null;
+  if (data.result) await renderResult(data.result);
+  renderPollingState(data);
+  renderReviewWorkspace(data);
+  activateTab("generatorRegen");
+  setStatus("Перегенерация применена", "success");
 }
 
 async function sendAssistantComment() {
@@ -866,6 +913,10 @@ function directionCode(value) {
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, "&#96;");
 }
 
 bindEvents();

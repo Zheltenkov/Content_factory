@@ -12,8 +12,14 @@ def test_dashboard_renders_registered_builtin_tiles() -> None:
 
     assert response.status_code == 200
     assert "Content Factory" in response.text
-    assert "Генератор" in response.text
+    assert "Генерация README" in response.text
+    assert "Проверка README" in response.text
+    assert "Перевод документов и видео" in response.text
     assert "Учебный план" in response.text
+    assert "Справочник" in response.text
+    assert "Недавние запуски" in response.text
+    assert response.text.count('class="module-tile dashboard-mode-card"') == 5
+    assert 'data-panel="curriculum/panel.html"' in response.text
     assert 'data-panel="reference/panel.html"' in response.text
 
 

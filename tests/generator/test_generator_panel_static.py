@@ -42,6 +42,9 @@ def test_generator_panel_js_hits_real_curriculum_and_generator_endpoints() -> No
     assert "/generator/runs/${state.currentRunId}/review/request-changes" in js
     assert "/generator/runs/${state.currentRunId}/review/preview-changes" in js
     assert "/generator/runs/${state.currentRunId}/review/approve-diff" in js
+    assert "/generator/runs/${state.currentRunId}/regenerate" in js
+    assert "selectedRegenerationScopes" in js
+    assert "regenerateCurrentRun" in js
     assert "project_order: Number(state.currentProject.project.order)" in js
     assert "pollGenerationStatus" in js
     assert "setTimeout" in js
@@ -78,3 +81,13 @@ def test_generator_panel_keeps_legacy_controls_without_mocking_backend() -> None
         assert control in html
     assert "/curriculum/plans/import-csv" in js
     assert "overrides: collectOverrides()" in js
+
+
+def test_generator_panel_keeps_legacy_full_width_split_layout() -> None:
+    css = (STATIC / "styles.css").read_text(encoding="utf-8")
+
+    assert "body.s21-product.page-generate .generator-workflow-grid" in css
+    assert "grid-template-columns: 560px minmax(0, 1fr);" in css
+    assert "body.s21-product.page-generate .generator-result-title" in css
+    assert "linear-gradient(rgba(15, 20, 25, 0.04) 1px, transparent 1px)" in css
+    assert "body.s21-product.page-generate .generator-empty-state .generator-result-checklist" in css

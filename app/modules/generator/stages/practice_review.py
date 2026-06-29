@@ -20,7 +20,6 @@ from app.modules.generator.stages.practice import (
     _content_type,
     _ensure_p2p_criteria,
     _expected_artifact,
-    _extract_chapter,
     _infer_covered_outcomes,
     _infer_theory_support,
     _normalize_task_input,
@@ -339,7 +338,7 @@ def _active_goal_prefix(goal: str) -> bool:
 
 def _repair_situation(context: CurriculumContext, task: PracticeTask, index: int) -> str:
     anchors = _sjm_anchors(context.sjm_context or "")
-    anchor_text = f" Заказчик остаётся главным адресатом результата." if "заказчик" in anchors else ""
+    anchor_text = " Заказчик остаётся главным адресатом результата." if "заказчик" in anchors else ""
     if len(task.situation) >= 40:
         return normalize_sentence(f"{task.situation} {anchor_text}".strip())
     case = context.sjm_context or context.current_project_description or context.current_project_title

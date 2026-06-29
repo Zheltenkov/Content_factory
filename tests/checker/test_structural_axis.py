@@ -74,3 +74,56 @@ def test_structural_axis_catches_broken_readme_and_returns_gate_rubric() -> None
     assert "document_integrity.table_columns" in codes
     assert "document_integrity.placeholder" in codes
     assert "document_integrity.unclosed_fence" in codes
+
+
+def test_structural_axis_catches_document_integrity_n1_to_n5() -> None:
+    repeated = (
+        "Повторяемый шаблонный блок описывает одну и ту же активность без новых требований, "
+        "артефактов, критериев и контекста для студента. "
+    )
+    broken = f"""# DO4_LinuxMonitoring
+
+Аннотация достаточной длины описывает учебный проект, но ниже специально оставлены дефекты целостности документа.
+
+## Содержание
+
+- [Глава 1](#глава-1-введение)
+- [Глава 2](#глава-2-теория)
+- [Глава 3](#глава-3-практика)
+
+## Глава 1. Введение
+
+Ссылка на чужой проект XX1_OtherProject должна быть поймана как foreign id.
+
+| Поле | Назначение |
+| --- | --- |
+| API |
+
+{repeated}
+
+{repeated}
+
+TODO: заменить шаблон.
+
+## Глава 2. Теория
+
+```mermaid
+graph TD
+  Database --> Cache
+```
+
+## Глава 3. Практика
+
+```python
+print("broken")
+"""
+
+    result = evaluate_readme(broken, project_id="DO4_LinuxMonitoring")
+    codes = {issue.code for issue in result.issues}
+
+    assert "document_integrity.table_columns" in codes
+    assert "document_integrity.placeholder" in codes
+    assert "document_integrity.repeated_block" in codes
+    assert "document_integrity.diagram_topic_mismatch" in codes
+    assert "document_integrity.unclosed_fence" in codes
+    assert "document_integrity.foreign_project_id" in codes

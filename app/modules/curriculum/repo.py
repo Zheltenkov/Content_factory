@@ -1210,6 +1210,114 @@ class CurriculumCatalogRepo:
             row = con.execute(CURRICULUM_ARTIFACT_TEMPLATE.select().where(CURRICULUM_ARTIFACT_TEMPLATE.c.id == template_id)).mappings().one()
             return self._artifact_template_payload(con, row)
 
+    def list_curriculum_template_proposals(
+        self,
+        plan_id: int,
+        *,
+        status: Literal["open", "accepted", "rejected"] | None = None,
+    ) -> list[dict[str, object]]:
+        with self._connect() as con:
+            stmt = CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.select().where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.plan_id == plan_id)
+            if status:
+                stmt = stmt.where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.status == status)
+            stmt = stmt.order_by(
+                sa.case(
+                    (CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.status == "open", 0),
+                    (CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.status == "accepted", 1),
+                    else_=2,
+                ),
+                CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id,
+            )
+            return [_proposal_from_row(row) for row in con.execute(stmt).mappings().all()]
+
+    def generate_curriculum_template_proposals(self, plan_id: int, *, max_proposals: int = 10) -> list[dict[str, object]]:
+        plan = self.load_curriculum_plan(plan_id)
+        if plan is None:
+            return []
+        grouped: dict[str, list[CurriculumProjectRecord]] = {}
+        for record in self.list_curriculum_projects(plan_id):
+            grouped.setdefault(record.project.block or "Без блока", []).append(record)
+        brief_id = self.create_profile_brief(
+            f"Template proposal workspace for curriculum plan #{plan_id}: {plan.title}",
+            spec={"source": "curriculum_template_proposals", "plan_id": plan_id, "title": plan.title, "direction": plan.direction},
+        )
+        with self._connect() as con:
+            con.execute(
+                CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.delete().where(
+                    CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.plan_id == plan_id,
+                    CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.status == "open",
+                )
+            )
+            for index, (block_name, records) in enumerate(
+                sorted(grouped.items(), key=lambda item: (-len(item[1]), item[0]))[:max_proposals],
+                start=1,
+            ):
+                con.execute(
+                    CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.insert().values(
+                        **_template_proposal_for_block(plan_id, brief_id, block_name, records, index)
+                    )
+                )
+        return self.list_curriculum_template_proposals(plan_id)
+
+    def update_curriculum_template_proposal(self, proposal_id: int, patch: dict[str, object]) -> dict[str, object] | None:
+        with self._connect() as con:
+            row = con.execute(
+                CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.select().where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id == proposal_id)
+            ).mappings().first()
+            if row is None:
+                return None
+            values = _proposal_update_values(row, patch)
+            if values:
+                values["updated_at"] = datetime.now(UTC)
+                con.execute(
+                    CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.update()
+                    .where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id == proposal_id)
+                    .values(**values)
+                )
+            updated = con.execute(
+                CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.select().where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id == proposal_id)
+            ).mappings().one()
+            return _proposal_from_row(updated)
+
+    def accept_curriculum_template_proposal(self, proposal_id: int) -> dict[str, object] | None:
+        with self._connect() as con:
+            row = con.execute(
+                CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.select().where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id == proposal_id)
+            ).mappings().first()
+            if row is None:
+                return None
+            proposal = _proposal_from_row(row)
+        template = self.upsert_artifact_template(
+            code=str(proposal["code"]),
+            title=str(proposal["title"]),
+            artifact_family=str(proposal["artifact_family"]),
+            artifact_description=str(proposal["artifact_description"]),
+            project_name_pattern=str(proposal["project_name_pattern"]),
+            materials_pattern=str(proposal["materials_pattern"]),
+            storytelling_pattern=str(proposal["storytelling_pattern"]),
+            validation_criteria=str(proposal["validation_criteria"]),
+            priority=80,
+            status="active",
+            source="proposal_accept",
+            scopes=[
+                {"scope_type": str(proposal["scope_type"]), "scope_name": scope_name, "weight": 1.0}
+                for scope_name in (proposal["scope_names"] or ["*"])
+            ],
+        )
+        with self._connect() as con:
+            con.execute(
+                CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.update()
+                .where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id == proposal_id)
+                .values(status="accepted", accepted_template_id=int(template["id"]), updated_at=datetime.now(UTC))
+            )
+            updated = con.execute(
+                CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.select().where(CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id == proposal_id)
+            ).mappings().one()
+            return _proposal_from_row(updated)
+
+    def reject_curriculum_template_proposal(self, proposal_id: int) -> dict[str, object] | None:
+        return self.update_curriculum_template_proposal(proposal_id, {"status": "rejected"})
+
     def set_artifact_template_status(self, template_id: int, status: Literal["active", "draft", "deprecated"]) -> dict[str, object] | None:
         with self._connect() as con:
             result = con.execute(
@@ -2787,6 +2895,126 @@ def _with_resolution(item: Competency, skill: CatalogSkill, resolution: str, sco
         aliases=list(dict.fromkeys([item.canonical_name, *item.aliases, *skill.aliases])),
     )
     return Competency.model_validate(payload)
+
+
+def _template_proposal_for_block(
+    plan_id: int,
+    brief_id: int,
+    block_name: str,
+    records: list[CurriculumProjectRecord],
+    index: int,
+) -> dict[str, object]:
+    projects = [record.project for record in sorted(records, key=lambda item: item.project.order)]
+    titles = [project.title for project in projects if project.title.strip()]
+    skills = sorted({ref.canonical_name for project in projects for ref in project.competency_refs if ref.canonical_name.strip()})
+    tools = sorted({tool for project in projects for tool in project.required_tools if str(tool).strip()})
+    family = _artifact_family_for_curriculum(block_name, skills, tools)
+    title = f"{_artifact_family_title(family)}: {block_name}"
+    skill_text = ", ".join(skills[:8]) if skills else ", ".join(titles[:4]) or block_name
+    return {
+        "brief_id": brief_id,
+        "plan_id": plan_id,
+        "status": "open",
+        "code": _slug_catalog_key(f"plan-{plan_id}-{index}-{block_name}"),
+        "title": title,
+        "artifact_family": family,
+        "scope_type": "coverage_area",
+        "scope_names_json": [block_name],
+        "artifact_description": f"Проверяемый артефакт по блоку «{block_name}»: студент применяет {skill_text}.",
+        "project_name_pattern": f"{block_name}: прикладной артефакт",
+        "materials_pattern": (
+            f"Шаблон артефакта «{title}», исходные материалы проектов блока, инструменты: {', '.join(tools[:6]) or 'Git'}."
+        ),
+        "storytelling_pattern": "Участник действует в рабочем контексте команды и предъявляет артефакт, который можно проверить по критериям.",
+        "validation_criteria": (
+            "Артефакт приложен; критерии проверки воспроизводимы; результат связан с образовательными результатами блока."
+        ),
+        "covered_skill_ids_json": [],
+        "covered_skill_names_json": skills,
+        "rationale": f"В блоке {len(projects)} проектов; шаблон снижает generic-описания и задаёт единый проверяемый артефакт.",
+        "confidence": 0.78 if len(projects) > 1 else 0.68,
+        "source": "curriculum_plan_block",
+        "updated_at": datetime.now(UTC),
+    }
+
+
+def _artifact_family_for_curriculum(block_name: str, skills: list[str], tools: list[str]) -> str:
+    text = normalize_catalog_key(" ".join([block_name, *skills, *tools]))
+    if any(token in text for token in ("api", "docker", "ci", "deploy", "linux", "postgres", "sql", "тест", "инфраструкт")):
+        return "configuration"
+    if any(token in text for token in ("архитект", "проектирован", "design", "ux", "ui")):
+        return "design"
+    if any(token in text for token in ("анализ", "исслед", "метрик", "data", "эксперимент")):
+        return "analysis"
+    if any(token in text for token in ("документ", "стратег", "презентац", "отч")):
+        return "document"
+    return "practice"
+
+
+def _artifact_family_title(family: str) -> str:
+    return {
+        "analysis": "Аналитический шаблон",
+        "document": "Документальный шаблон",
+        "configuration": "Конфигурационный шаблон",
+        "design": "Проектный шаблон",
+        "production": "Рабочий шаблон",
+        "practice": "Практический шаблон",
+    }.get(family, "Практический шаблон")
+
+
+def _proposal_update_values(row: sa.RowMapping, patch: dict[str, object]) -> dict[str, object]:
+    values: dict[str, object] = {}
+    text_fields = (
+        "title",
+        "artifact_family",
+        "scope_type",
+        "artifact_description",
+        "project_name_pattern",
+        "materials_pattern",
+        "storytelling_pattern",
+        "validation_criteria",
+        "rationale",
+        "status",
+    )
+    for field in text_fields:
+        if field in patch and patch[field] is not None:
+            values[field] = str(patch[field]).strip()
+    if "scope_names" in patch and patch["scope_names"] is not None:
+        values["scope_names_json"] = [str(item).strip() for item in _json_list(patch["scope_names"]) if str(item).strip()]
+    if "confidence" in patch and patch["confidence"] is not None:
+        values["confidence"] = float(patch["confidence"])
+    if values.get("title") == "":
+        values["title"] = row["title"]
+    if values.get("artifact_description") == "":
+        values["artifact_description"] = row["artifact_description"]
+    return values
+
+
+def _proposal_from_row(row: sa.RowMapping) -> dict[str, object]:
+    return {
+        "id": int(row["id"]),
+        "brief_id": int(row["brief_id"]),
+        "plan_id": int(row["plan_id"]) if row["plan_id"] is not None else None,
+        "status": row["status"],
+        "code": row["code"],
+        "title": row["title"],
+        "artifact_family": row["artifact_family"],
+        "scope_type": row["scope_type"],
+        "scope_names": [str(item) for item in _json_list(row["scope_names_json"]) if str(item).strip()],
+        "artifact_description": row["artifact_description"] or "",
+        "project_name_pattern": row["project_name_pattern"] or "",
+        "materials_pattern": row["materials_pattern"] or "",
+        "storytelling_pattern": row["storytelling_pattern"] or "",
+        "validation_criteria": row["validation_criteria"] or "",
+        "covered_skill_ids": [int(item) for item in _json_list(row["covered_skill_ids_json"]) if str(item).isdigit()],
+        "covered_skill_names": [str(item) for item in _json_list(row["covered_skill_names_json"]) if str(item).strip()],
+        "rationale": row["rationale"] or "",
+        "confidence": float(row["confidence"] or 0.0),
+        "source": row["source"] or "curriculum_plan_block",
+        "accepted_template_id": int(row["accepted_template_id"]) if row["accepted_template_id"] is not None else None,
+        "created_at": _iso_or_none(row["created_at"]),
+        "updated_at": _iso_or_none(row["updated_at"]),
+    }
 
 
 def _project_values(

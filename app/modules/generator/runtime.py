@@ -21,6 +21,7 @@ from app.core.methodology.revision import (
     MethodologyAssistantParseContext,
     build_section_target_registry,
 )
+from app.modules.generator.refine import regenerate_markdown
 from app.modules.generator.service import GeneratorRun
 
 GeneratorRunStatus = Literal["created", "running", "completed", "failed", "needs_review", "cancelled"]
@@ -129,6 +130,49 @@ class GeneratorRunStore:
                 run.status = "cancelled"
                 run.error = payload.get("comment") or "Остановлено методологом"
             run.review_actions.append(_action(action, payload, action_id=action_id))
+            run.updated_at = _now()
+            return run
+
+    def regenerate(self, run_id: str, instruction: str, scopes: list[dict[str, Any]] | None = None) -> StoredGeneratorRun | None:
+        with self._lock:
+            run = self._runs.get(run_id)
+            if run is None:
+                return None
+            if run.result is None:
+                raise ValueError("README ещё не готов")
+            comment = _scoped_regeneration_comment(instruction, scopes or [])
+            report = regenerate_markdown(run.result.document.markdown, comment, context=run.result.context)
+            document = run.result.document
+            metadata = dict(document.metadata or {})
+            history = list(metadata.get("regeneration_history") or [])
+            history.append(
+                {
+                    "instruction": instruction,
+                    "scopes": scopes or [],
+                    "changed": report.changed,
+                    "apply_mode": report.apply_mode,
+                    "created_at": _now().isoformat(),
+                }
+            )
+            metadata["regeneration_report"] = report.model_dump(mode="json")
+            metadata["regeneration_history"] = history[-20:]
+            if report.changed:
+                document = document.model_copy(update={"markdown": report.regenerated_markdown, "metadata": metadata})
+                run.result.engine_result.documents["generator.evaluation"] = document
+                run.result.engine_result.context["markdown"] = report.regenerated_markdown
+                run.result = replace(run.result, document=document)
+                run.preview_markdown = ""
+                run.preview_action_ids = []
+            else:
+                document = document.model_copy(update={"metadata": metadata})
+                run.result = replace(run.result, document=document)
+            run.review_actions.append(
+                _action(
+                    "regenerate",
+                    {"instruction": instruction, "scopes": scopes or [], "report": report.model_dump(mode="json")},
+                )
+            )
+            run.status = "completed"
             run.updated_at = _now()
             return run
 
@@ -342,6 +386,33 @@ def _change_request(payload: dict[str, Any]) -> dict[str, Any]:
             expected_outcome=str(raw.get("expected_outcome") or ""),
         )
     return request.model_dump(mode="json")
+
+
+def _scoped_regeneration_comment(instruction: str, scopes: list[dict[str, Any]]) -> str:
+    text = instruction.strip() or "Улучшить выбранные разделы README без изменения остальной структуры."
+    normalized = [_scope_payload(item) for item in scopes]
+    if not normalized:
+        return text
+    blocks = []
+    for index, scope in enumerate(normalized, start=1):
+        blocks.append(
+            "\n".join(
+                [
+                    f"Правка {index}: {scope['title']}",
+                    f"Диапазон строк: {scope['start_line']}-{scope['end_line']}",
+                    f"Что исправить: {text}",
+                    "Что оставить: остальные разделы README без изменений.",
+                ]
+            )
+        )
+    return "\n\n".join(blocks)
+
+
+def _scope_payload(item: dict[str, Any]) -> dict[str, Any]:
+    start = max(1, int(item.get("start_line") or 1))
+    end = max(start, int(item.get("end_line") or start))
+    title = str(item.get("title") or "README section").strip() or "README section"
+    return {"title": title, "start_line": start, "end_line": end}
 
 
 def _stage(value: Any) -> Any:

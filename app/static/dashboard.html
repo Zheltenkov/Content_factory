@@ -9,40 +9,32 @@
   </head>
   <body class="s21-product page-menu">
     <header class="hdr dashboard-header--menu">
-      <a class="hdr-brand" href="/app" aria-label="Главная">
-        <span class="hdr-mark">21</span>
-        <span class="hdr-title">
-          <b>Генератор</b>
-          <span>учебных проектов · v 2.4</span>
-        </span>
-      </a>
       <nav class="hdr-nav dashboard-nav" aria-label="Основные разделы">
         <a href="/app" class="active">Главная</a>
         <a href="/app/generate">Генерация</a>
-        <a href="/app/check">Аудитор</a>
+        <a href="/app/check">Проверка</a>
         <a href="/app/translate">Перевод</a>
         <a href="/up">Учебный план</a>
         <a href="/catalog-admin/groups">Справочник</a>
-        <a href="/app/instruction">Документация</a>
+        <a href="/app/instruction">Инструкция</a>
       </nav>
       <div class="hdr-spacer"></div>
       <div class="hdr-right dashboard-header-actions" aria-label="Состояние">
-        <span class="hdr-lang"><span class="on">RU</span><span>EN</span></span>
-        <span class="hdr-user dashboard-user"><span class="av dashboard-user-avatar">МК</span><span>М. Кравцова</span></span>
+        <span class="hdr-ai" aria-label="ИИ">ИИ</span>
+        <span class="hdr-user dashboard-user"><span class="av dashboard-user-avatar">VZ</span><span>Vasilii Zheltenkov</span></span>
       </div>
     </header>
     <main class="dashboard-shell">
       <section class="dashboard-hero" aria-labelledby="dashboardTitle">
         <div class="dashboard-hero-copy">
-          <p class="eyebrow"><span class="badge-dot"></span> Главная · v 2.4</p>
           <h1 id="dashboardTitle">Генератор учебных проектов</h1>
-          <p>Выберите режим работы. Все пять модулей — генератор, аудитор, перевод, учебный план и справочник — работают в едином S21-контуре с общей методологической базой и словарями.</p>
+          <p>Выберите режим работы. Все три инструмента работают с одной методологической базой и общими словарями.</p>
           <div class="dashboard-meta-row" aria-label="Состояние сервиса">
             <span class="dashboard-service"><span></span>Сервис доступен</span>
             <span class="dashboard-dot"></span>
-            <span>Модулей: <strong>5</strong></span>
+            <span>Последний запуск: <strong>16.06, 18:23</strong></span>
             <span class="dashboard-dot"></span>
-            <span>Alembic: <strong>018</strong></span>
+            <span>Активных задач: <strong>0</strong></span>
           </div>
         </div>
         <div class="dashboard-mosaic" aria-hidden="true">
@@ -52,6 +44,46 @@
         </div>
       </section>
       <section class="module-grid dashboard-mode-grid" aria-label="Модули">{{ module_tiles }}</section>
+      <section class="dashboard-runs" aria-labelledby="recentRunsTitle">
+        <div class="dashboard-section-head">
+          <h2 id="recentRunsTitle">Недавние запуски</h2>
+          <a href="/app/generate">Все запуски →</a>
+        </div>
+        <div class="dashboard-runs-table" role="table" aria-label="Недавние запуски">
+          <div class="dashboard-run-row" role="row">
+            <span class="dashboard-run-check" aria-hidden="true"></span>
+            <span class="dashboard-run-name"><strong>PjM17_TeamMng</strong><small>16.06, 18:23</small></span>
+            <span class="dashboard-run-pill">ГЕНЕРАЦИЯ</span>
+            <span class="dashboard-run-status done">• ГОТОВО</span>
+            <span class="dashboard-run-score">–</span>
+            <a class="dashboard-run-action" href="/app/generate">Открыть</a>
+          </div>
+          <div class="dashboard-run-row" role="row">
+            <span class="dashboard-run-check" aria-hidden="true"></span>
+            <span class="dashboard-run-name"><strong>Генерация README</strong><small>16.06, 18:09</small></span>
+            <span class="dashboard-run-pill">ГЕНЕРАЦИЯ</span>
+            <span class="dashboard-run-status stopped">• ОСТАНОВЛЕНО</span>
+            <span class="dashboard-run-score">–</span>
+            <button class="dashboard-run-action" type="button" disabled>Нет результата</button>
+          </div>
+          <div class="dashboard-run-row" role="row">
+            <span class="dashboard-run-check" aria-hidden="true"></span>
+            <span class="dashboard-run-name"><strong>Генерация README</strong><small>16.06, 17:58</small></span>
+            <span class="dashboard-run-pill">ГЕНЕРАЦИЯ</span>
+            <span class="dashboard-run-status stopped">• ОСТАНОВЛЕНО</span>
+            <span class="dashboard-run-score">–</span>
+            <button class="dashboard-run-action" type="button" disabled>Нет результата</button>
+          </div>
+          <div class="dashboard-run-row" role="row">
+            <span class="dashboard-run-check" aria-hidden="true"></span>
+            <span class="dashboard-run-name"><strong>Генерация README</strong><small>16.06, 17:42</small></span>
+            <span class="dashboard-run-pill">ГЕНЕРАЦИЯ</span>
+            <span class="dashboard-run-status stopped">• ОСТАНОВЛЕНО</span>
+            <span class="dashboard-run-score">–</span>
+            <button class="dashboard-run-action" type="button" disabled>Нет результата</button>
+          </div>
+        </div>
+      </section>
     </main>
     <script src="/static/shared/shell.js"></script>
   </body>

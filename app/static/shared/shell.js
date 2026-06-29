@@ -82,11 +82,11 @@
   const MODULE_NAV = [
     ["", "Главная", "/app"],
     ["generator", "Генерация", "/app/generate"],
-    ["checker", "Аудитор", "/app/check"],
+    ["checker", "Проверка", "/app/check"],
     ["translator", "Перевод", "/app/translate"],
     ["curriculum", "Учебный план", "/up"],
     ["reference", "Справочник", "/catalog-admin/groups"],
-    ["instruction", "Документация", "/app/instruction"],
+    ["instruction", "Инструкция", "/app/instruction"],
   ];
 
   function injectTopbar(root = document) {
@@ -97,11 +97,6 @@
     const current = workbench.dataset.module || "";
     const header = root.createElement("header");
     header.className = "hdr dashboard-header--menu";
-    const brand = root.createElement("a");
-    brand.className = "hdr-brand";
-    brand.href = "/app";
-    brand.setAttribute("aria-label", "Главная");
-    brand.innerHTML = '<span class="hdr-mark">21</span><span class="hdr-title"><b>Генератор</b><span>учебных проектов · v 2.4</span></span>';
     const nav = root.createElement("nav");
     nav.className = "hdr-nav dashboard-nav";
     nav.setAttribute("aria-label", "Основные разделы");
@@ -116,8 +111,8 @@
     spacer.className = "hdr-spacer";
     const actions = root.createElement("div");
     actions.className = "hdr-right dashboard-header-actions";
-    actions.innerHTML = '<span class="hdr-lang"><span class="on">RU</span><span>EN</span></span><span class="hdr-user dashboard-user"><span class="av dashboard-user-avatar">МК</span><span>М. Кравцова</span></span>';
-    header.append(brand, nav, spacer, actions);
+    actions.innerHTML = '<span class="hdr-ai" aria-label="ИИ">ИИ</span><span class="hdr-user dashboard-user"><span class="av dashboard-user-avatar">VZ</span><span>Vasilii Zheltenkov</span></span>';
+    header.append(nav, spacer, actions);
     workbench.before(header);
   }
 

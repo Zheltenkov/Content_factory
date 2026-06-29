@@ -29,3 +29,9 @@ addopts = "-q"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+exclude = [
+    ".claude",
+    ".playwright-mcp",
+    "docs",
+    "legacy",
+]
