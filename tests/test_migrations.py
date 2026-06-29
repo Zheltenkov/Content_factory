@@ -31,8 +31,8 @@ def _psycopg_url(url: str) -> str:
 def test_alembic_chain_points_to_current_head() -> None:
     script = ScriptDirectory.from_config(Config("alembic.ini"))
 
-    assert script.get_heads() == ["015"]
-    assert len(list(script.walk_revisions())) == 15
+    assert script.get_heads() == ["018"]
+    assert len(list(script.walk_revisions())) == 18
 
 
 def test_reference_catalog_revision_declares_key_tables() -> None:
@@ -102,6 +102,34 @@ def test_methodology_revision_loop_declares_key_tables() -> None:
         "methodology_revision_checkpoint",
         "methodology_revision_change_request",
     }
+
+
+def test_intake_runtime_revision_declares_minimal_tables() -> None:
+    migration = import_module("migrations.versions.016_add_intake_runtime_tables")
+
+    assert migration.revision == "016"
+    assert migration.down_revision == "015"
+    assert migration.INTAKE_RUNTIME_TABLES == {"profile_brief", "intake_job"}
+
+
+def test_artifact_template_revision_declares_key_tables() -> None:
+    migration = import_module("migrations.versions.017_add_artifact_template_tables")
+
+    assert migration.revision == "017"
+    assert migration.down_revision == "016"
+    assert migration.ARTIFACT_TEMPLATE_TABLES == {
+        "curriculum_artifact_template",
+        "curriculum_artifact_template_scope",
+        "curriculum_artifact_template_proposal",
+    }
+
+
+def test_indicator_archive_revision_declares_status_column() -> None:
+    migration = import_module("migrations.versions.018_add_indicator_archive_status")
+
+    assert migration.revision == "018"
+    assert migration.down_revision == "017"
+    assert migration.ARCHIVE_COLUMNS == {"indicator_row.status"}
 
 
 def test_database_url_connects_when_postgres_is_available() -> None:

@@ -92,6 +92,29 @@ def test_document_upload_translation_returns_source_metadata() -> None:
     assert "Translated body" in status["translated_markdown"]
 
 
+def test_ru_translation_paths_do_not_call_llm_client() -> None:
+    client, transport = client_with()
+    readme = client.post(
+        "/translator/translate/readme",
+        json={"markdown": "# README\n\nРусский текст.", "target_language": "ru", "translation_mode": "literal"},
+    )
+    assert readme.status_code == 200
+    readme_status = client.get(f"/translator/translate/status/{readme.json()['request_id']}").json()
+    assert readme_status["translated_markdown"] == "# README\n\nРусский текст."
+
+    video = client.post(
+        "/translator/translate/video",
+        data={"target_language": "ru", "output_mode": "both"},
+        files={"file": ("lesson.srt", b"1\n00:00:00,000 --> 00:00:04,000\n\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82\n", "text/plain")},
+    )
+    assert video.status_code == 200
+    video_status = client.get(f"/translator/translate/status/{video.json()['request_id']}").json()
+    assert video_status["status"] == "completed"
+    assert video_status["error_code"] == "video_burn_deferred"
+    assert "Привет" in video_status["translated_subtitles"]
+    assert transport.requests == []
+
+
 def test_video_translation_reports_deferred_burned_video_adapter() -> None:
     client, _transport = client_with('{"segments":[{"id":1,"text":"Hello with subtitles"}]}')
     files = {"file": ("lesson.srt", b"1\n00:00:00,000 --> 00:00:04,000\n\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82\n", "text/plain")}
@@ -128,6 +151,29 @@ def test_translator_panel_uses_real_backend_contracts() -> None:
 
     assert panel.status_code == 200
     assert js.status_code == 200
+    for control_id in (
+        'id="translationSourceDocument"',
+        'id="translationSourceVideo"',
+        'id="translationFile"',
+        'id="translationInput"',
+        'id="translationMode"',
+        'id="translationLanguage"',
+        'id="translationWantVideo"',
+        'id="translationWantSubtitles"',
+        'id="translationWantTranscript"',
+        'id="translationVideoFile"',
+        'id="translationOutputMode"',
+        'id="translationLanguageMirror"',
+        'id="translationSubtitleFormat"',
+        'id="translationStatus"',
+        'id="translationProgressContainer"',
+        'id="translationProgressPhase"',
+        'id="translationProgressBar"',
+        'id="translationUploadProgressContainer"',
+        'id="translationVideoProgress"',
+        'id="translationVideoInlineDownloadLinks"',
+    ):
+        assert control_id in panel.text
     assert 'id="translatorSubtitleStyle"' in panel.text
     assert 'data-tab-target="translatorJobTab"' in panel.text
     assert '<script src="/static/shared/shell.js"></script>' in panel.text
@@ -137,4 +183,8 @@ def test_translator_panel_uses_real_backend_contracts() -> None:
     assert 'fetch("/translator/translate/video"' in js.text
     assert "translator/translate/status" in js.text
     assert "translator/translate/download" in js.text
+    assert "translator/translate/subtitles" in js.text
+    assert "video_burn_deferred" in js.text
+    assert "updateTranslationOutputMode" in js.text
+    assert "showTranslationCompare" in js.text
     assert "mock" not in js.text.lower()

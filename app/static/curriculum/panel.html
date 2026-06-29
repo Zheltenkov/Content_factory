@@ -3,83 +3,133 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Учебный план · Content Factory</title>
+    <meta name="application-name" content="Content Factory" />
+    <title>Учебный план · Рабочий контур методолога</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=s21-legacy-design" />
   </head>
-  <body>
-    <main class="workbench curriculum-panel" data-module="curriculum">
-      <header class="workbench-header">
-        <a class="back-link" href="/">Content Factory</a>
-        <h1>Учебный план</h1>
-        <div class="toolbar">
-          <label class="file-button">
-            CSV
-            <input id="csvInput" type="file" accept=".csv,text/csv" />
-          </label>
-          <button id="exportCsv" type="button">Экспорт CSV</button>
+  <body class="methodologist-product page-curriculum">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="wordmark" href="/app">
+          <img class="wordmark-logo" src="/static/school21-sber-logo.jpg?v=1" alt="Школа 21" />
+          <span>
+            <span class="wordmark-name">Рабочий контур методолога</span>
+          </span>
+        </a>
+        <nav class="nav" aria-label="Основные разделы">
+          <a href="/app" class="nav-link">Главная</a>
+          <a href="/app/generate" class="nav-link">Генерация</a>
+          <a href="/app/check" class="nav-link">Аудитор</a>
+          <a href="/app/translate" class="nav-link">Перевод</a>
+          <a href="/up" class="nav-link active">Учебный план</a>
+          <a href="/catalog-admin/groups" class="nav-link">Справочник</a>
+          <a href="/app/instruction" class="nav-link">Документация</a>
+        </nav>
+      </div>
+    </header>
+    <main class="page-shell page-shell-intake workbench curriculum-panel" data-module="curriculum">
+      <aside class="summary-panel summary-panel-intake" aria-label="Сводка учебного плана">
+        <div class="summary-card">
+          <div class="summary-label">Направления</div>
+          <div class="summary-value" id="curriculumSummaryPlans">?</div>
         </div>
-      </header>
+        <div class="summary-card">
+          <div class="summary-label">Блоки</div>
+          <div class="summary-value" id="curriculumSummaryBlocks">?</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Проекты</div>
+          <div class="summary-value" id="curriculumSummaryProjects">?</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Часы</div>
+          <div class="summary-value" id="curriculumSummaryHours">?</div>
+        </div>
+        <div class="summary-card summary-card-warn">
+          <div class="summary-label">Статус</div>
+          <div class="summary-value" id="curriculumSummaryStatus">draft</div>
+        </div>
+      </aside>
 
-      <section class="curriculum-grid">
-        <aside class="side-panel" aria-label="Навигация по учебному плану">
-          <label>
-            Направление
-            <select id="planSelect"></select>
-          </label>
-          <label>
-            Блок
-            <select id="blockSelect"></select>
-          </label>
-          <label>
-            Проект
-            <select id="projectSelect"></select>
-          </label>
-          <div id="statusLine" class="status-line" aria-live="polite"></div>
-        </aside>
-
-        <form id="projectForm" class="editor-panel">
-          <div class="form-row two">
-            <label>
-              Название
-              <input id="projectTitle" name="title" required />
-            </label>
-            <label>
-              Порядок
-              <input id="projectOrder" name="order" type="number" min="1" required />
-            </label>
+      <section class="content-panel content-panel-intake">
+        <section class="hero">
+          <div>
+            <a class="back-link" href="/intake">Рабочий стол</a>
+            <h1>Учебный план</h1>
+            <p>Редактор persisted-строк УП: каскад направление → блок → проект, ручная правка, импорт и экспорт CSV в формате шаблона.</p>
           </div>
-          <div class="form-row two">
+          <div class="review-actions">
+            <label class="file-button action-btn action-btn-secondary">
+              CSV
+              <input id="csvInput" type="file" accept=".csv,text/csv" />
+            </label>
+            <button id="exportCsv" class="action-btn action-btn-primary" type="button">Экспорт CSV</button>
+          </div>
+        </section>
+
+        <section class="curriculum-grid">
+          <aside class="side-panel" aria-label="Навигация по учебному плану">
+            <label>
+              Направление
+              <select id="planSelect"></select>
+            </label>
             <label>
               Блок
-              <input id="projectBlock" name="block" />
+              <select id="blockSelect"></select>
             </label>
             <label>
-              Трудоемкость
-              <input id="projectHours" name="hours_astro" type="number" min="0" step="0.5" />
+              Проект
+              <select id="projectSelect"></select>
             </label>
-          </div>
-          <label>
-            Описание
-            <textarea id="projectDescription" name="description" rows="4"></textarea>
-          </label>
-          <label>
-            Образовательные результаты
-            <textarea id="projectOutcomes" name="outcomes_can" rows="5"></textarea>
-          </label>
-          <label>
-            Инструменты
-            <input id="projectTools" name="required_tools" />
-          </label>
-          <label>
-            Сторителлинг
-            <textarea id="projectStory" name="storytelling" rows="4"></textarea>
-          </label>
-          <div class="form-actions">
-            <button id="saveProject" type="submit">Сохранить</button>
-          </div>
-        </form>
+            <div id="statusLine" class="status-line" aria-live="polite"></div>
+          </aside>
+
+          <form id="projectForm" class="editor-panel">
+            <div class="form-row two">
+              <label>
+                Название
+                <input id="projectTitle" name="title" required />
+              </label>
+              <label>
+                Порядок
+                <input id="projectOrder" name="order" type="number" min="1" required />
+              </label>
+            </div>
+            <div class="form-row two">
+              <label>
+                Блок
+                <input id="projectBlock" name="block" />
+              </label>
+              <label>
+                Трудоемкость
+                <input id="projectHours" name="hours_astro" type="number" min="0" step="0.5" />
+              </label>
+            </div>
+            <label>
+              Описание
+              <textarea id="projectDescription" name="description" rows="4"></textarea>
+            </label>
+            <label>
+              Образовательные результаты
+              <textarea id="projectOutcomes" name="outcomes_can" rows="5"></textarea>
+            </label>
+            <label>
+              Инструменты
+              <input id="projectTools" name="required_tools" />
+            </label>
+            <label>
+              Сторителлинг
+              <textarea id="projectStory" name="storytelling" rows="4"></textarea>
+            </label>
+            <div class="form-actions">
+              <button id="saveProject" class="action-btn action-btn-primary" type="submit">Сохранить</button>
+            </div>
+          </form>
+        </section>
       </section>
     </main>
+    <script src="/static/shared/shell.js"></script>
     <script src="/static/curriculum/panel.js"></script>
   </body>
 </html>

@@ -219,6 +219,7 @@ INDICATOR_ROW = sa.Table(
     sa.Column("base_text", sa.Text()),
     sa.Column("raw_number", sa.Text()),
     sa.Column("notes", sa.Text()),
+    sa.Column("status", sa.Text(), nullable=False, server_default="active"),
     sa.UniqueConstraint("competency_skill_id", "source_row_number", name="uq_indicator_row_source"),
 )
 INDICATOR_LEVEL_CELL = sa.Table(
@@ -317,6 +318,109 @@ sa.Index("idx_curriculum_plan_profile_status", CURRICULUM_PLAN.c.profile_id, CUR
 sa.Index("idx_curriculum_plan_updated", CURRICULUM_PLAN.c.updated_at)
 sa.Index("idx_curriculum_project_plan_order", CURRICULUM_PROJECT.c.plan_id, CURRICULUM_PROJECT.c.project_order)
 sa.Index("idx_curriculum_project_block", CURRICULUM_PROJECT.c.plan_id, CURRICULUM_PROJECT.c.block_name, CURRICULUM_PROJECT.c.project_order)
+
+PROFILE_BRIEF = sa.Table(
+    "profile_brief",
+    metadata,
+    sa.Column("id", sa.Integer(), primary_key=True),
+    sa.Column("raw_text", sa.Text(), nullable=False),
+    sa.Column("role", sa.Text()),
+    sa.Column("seniority", sa.Text()),
+    sa.Column("domain", sa.Text()),
+    sa.Column("metadata_json", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
+    sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+)
+INTAKE_JOB = sa.Table(
+    "intake_job",
+    metadata,
+    sa.Column("id", sa.Integer(), primary_key=True),
+    sa.Column("brief_id", sa.Integer(), sa.ForeignKey("profile_brief.id", ondelete="SET NULL")),
+    sa.Column("source_kind", sa.Text(), nullable=False),
+    sa.Column("source_name", sa.Text()),
+    sa.Column("file_path", sa.Text()),
+    sa.Column("brief_text", sa.Text(), nullable=False),
+    sa.Column("status", sa.Text(), nullable=False, server_default="pending"),
+    sa.Column("current_stage", sa.Text()),
+    sa.Column("progress_note", sa.Text()),
+    sa.Column("error_text", sa.Text()),
+    sa.Column("result_payload", sa.JSON()),
+    sa.Column("use_council", sa.Integer(), nullable=False, server_default="1"),
+    sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.Column("started_at", sa.DateTime()),
+    sa.Column("finished_at", sa.DateTime()),
+    sa.CheckConstraint("source_kind IN ('text', 'file')", name="ck_intake_job_source_kind"),
+    sa.CheckConstraint("status IN ('pending', 'running', 'succeeded', 'failed')", name="ck_intake_job_status"),
+)
+sa.Index("idx_intake_job_created", INTAKE_JOB.c.created_at)
+sa.Index("idx_intake_job_status", INTAKE_JOB.c.status, INTAKE_JOB.c.created_at)
+CURRICULUM_ARTIFACT_TEMPLATE = sa.Table(
+    "curriculum_artifact_template",
+    metadata,
+    sa.Column("id", sa.Integer(), primary_key=True),
+    sa.Column("code", sa.Text(), nullable=False, unique=True),
+    sa.Column("title", sa.Text(), nullable=False),
+    sa.Column("artifact_family", sa.Text(), nullable=False),
+    sa.Column("artifact_description", sa.Text(), nullable=False),
+    sa.Column("project_name_pattern", sa.Text()),
+    sa.Column("materials_pattern", sa.Text()),
+    sa.Column("storytelling_pattern", sa.Text()),
+    sa.Column("validation_criteria", sa.Text()),
+    sa.Column("priority", sa.Integer(), nullable=False, server_default="100"),
+    sa.Column("status", sa.Text(), nullable=False, server_default="active"),
+    sa.Column("source", sa.Text(), nullable=False, server_default="manual"),
+    sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.Column("updated_at", sa.DateTime()),
+    sa.CheckConstraint("artifact_family IN ('analysis','document','configuration','design','production','practice')", name="ck_artifact_template_family"),
+    sa.CheckConstraint("status IN ('active','draft','deprecated')", name="ck_artifact_template_status"),
+)
+CURRICULUM_ARTIFACT_TEMPLATE_SCOPE = sa.Table(
+    "curriculum_artifact_template_scope",
+    metadata,
+    sa.Column("id", sa.Integer(), primary_key=True),
+    sa.Column("template_id", sa.Integer(), sa.ForeignKey("curriculum_artifact_template.id", ondelete="CASCADE"), nullable=False),
+    sa.Column("scope_type", sa.Text(), nullable=False),
+    sa.Column("scope_id", sa.Integer()),
+    sa.Column("scope_name", sa.Text()),
+    sa.Column("normalized_scope_name", sa.Text()),
+    sa.Column("weight", sa.Float(), nullable=False, server_default="1.0"),
+    sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.CheckConstraint("scope_type IN ('taxonomy_node','skill_group','coverage_area','any')", name="ck_artifact_template_scope_type"),
+    sa.UniqueConstraint("template_id", "scope_type", "scope_id", "normalized_scope_name", name="uq_artifact_template_scope"),
+)
+CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL = sa.Table(
+    "curriculum_artifact_template_proposal",
+    metadata,
+    sa.Column("id", sa.Integer(), primary_key=True),
+    sa.Column("brief_id", sa.Integer(), sa.ForeignKey("profile_brief.id", ondelete="CASCADE"), nullable=False),
+    sa.Column("plan_id", sa.Integer(), sa.ForeignKey("curriculum_plan.id", ondelete="SET NULL")),
+    sa.Column("status", sa.Text(), nullable=False, server_default="open"),
+    sa.Column("code", sa.Text(), nullable=False),
+    sa.Column("title", sa.Text(), nullable=False),
+    sa.Column("artifact_family", sa.Text(), nullable=False),
+    sa.Column("scope_type", sa.Text(), nullable=False, server_default="coverage_area"),
+    sa.Column("scope_names_json", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("artifact_description", sa.Text(), nullable=False),
+    sa.Column("project_name_pattern", sa.Text()),
+    sa.Column("materials_pattern", sa.Text()),
+    sa.Column("storytelling_pattern", sa.Text()),
+    sa.Column("validation_criteria", sa.Text()),
+    sa.Column("covered_skill_ids_json", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("covered_skill_names_json", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+    sa.Column("rationale", sa.Text()),
+    sa.Column("confidence", sa.Float(), nullable=False, server_default="0.75"),
+    sa.Column("source", sa.Text(), nullable=False, server_default="deterministic_proposer"),
+    sa.Column("accepted_template_id", sa.Integer(), sa.ForeignKey("curriculum_artifact_template.id", ondelete="SET NULL")),
+    sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+    sa.Column("updated_at", sa.DateTime()),
+    sa.CheckConstraint("status IN ('open','accepted','rejected')", name="ck_artifact_template_proposal_status"),
+    sa.CheckConstraint("artifact_family IN ('analysis','document','configuration','design','production','practice')", name="ck_artifact_template_proposal_family"),
+    sa.CheckConstraint("scope_type IN ('taxonomy_node','skill_group','coverage_area','any')", name="ck_artifact_template_proposal_scope"),
+    sa.UniqueConstraint("brief_id", "code", name="uq_artifact_template_proposal_brief_code"),
+)
+sa.Index("idx_artifact_template_status", CURRICULUM_ARTIFACT_TEMPLATE.c.status, CURRICULUM_ARTIFACT_TEMPLATE.c.artifact_family, CURRICULUM_ARTIFACT_TEMPLATE.c.priority)
+sa.Index("idx_artifact_template_scope", CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.c.scope_type, CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.c.normalized_scope_name)
+sa.Index("idx_artifact_template_proposal_brief", CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.brief_id, CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.status, CURRICULUM_ARTIFACT_TEMPLATE_PROPOSAL.c.id)
 
 
 @dataclass(frozen=True)
@@ -618,6 +722,157 @@ class CurriculumCatalogRepo:
             )
             return [dict(row) for row in con.execute(stmt).mappings().all()]
 
+    def get_reference_skill(self, skill_id: int) -> dict[str, object] | None:
+        """Return one catalog skill with aliases, competency links and editable indicators."""
+        with self._connect() as con:
+            skill = self._get_skill(con, skill_id)
+            if skill is None:
+                return None
+            links = self._skill_links(con, skill_id)
+            return {
+                "skill_id": skill.skill_id,
+                "canonical_name": skill.canonical_name,
+                "normalized_name": skill.normalized_name,
+                "skill_type": skill.skill_type,
+                "status": skill.status,
+                "aliases": list(skill.aliases),
+                "links": links,
+                "indicators": [indicator for link in links for indicator in link["indicators"]],
+            }
+
+    def create_group_skill(
+        self,
+        competency_id: int,
+        *,
+        canonical_name: str,
+        skill_type: str = "unknown",
+        status: CatalogStatus = "active",
+        aliases: Iterable[str] = (),
+    ) -> dict[str, object] | None:
+        """Create or reuse a skill and attach it to a competency group."""
+        with self._connect() as con:
+            competency = con.execute(COMPETENCY.select().where(COMPETENCY.c.id == competency_id)).mappings().first()
+            competency_title = str(competency["title"]) if competency is not None else ""
+        if not competency_title:
+            return None
+        skill = self.upsert_skill(canonical_name, skill_type=skill_type, status=status, aliases=aliases, alias_source="reference-ui")
+        self.ensure_skill_competency_link(
+            skill.skill_id,
+            skill_name=skill.canonical_name,
+            competency_title=competency_title,
+            indicators=None,
+            source_note="reference-ui",
+        )
+        return self.get_reference_skill(skill.skill_id)
+
+    def create_reference_indicator(
+        self,
+        skill_id: int,
+        *,
+        text: str,
+        dimension_code: str = "unspecified",
+        notes: str = "reference-ui",
+    ) -> dict[str, object] | None:
+        clean_text = _clean_title(text, fallback="")
+        if not clean_text:
+            return None
+        with self._connect() as con:
+            link_id = self._first_competency_skill_id(con, skill_id)
+            skill = self._get_skill(con, skill_id)
+        if skill is None:
+            return None
+        if link_id is None:
+            created = self.ensure_skill_competency_link(
+                skill.skill_id,
+                skill_name=skill.canonical_name,
+                competency_title=DEFAULT_COMPETENCY_TITLE,
+                indicators=None,
+                source_note="reference-ui",
+            )
+            link_id = created.competency_skill_id
+        if link_id is None:
+            return None
+        with self._connect() as con:
+            dimension_id = _ensure_dimension(con, dimension_code)
+            row_id, _created = _ensure_indicator_row(con, link_id, dimension_id, clean_text, notes)
+            _ensure_indicator_level_cell(con, row_id, _level_label_for_dimension(dimension_code), clean_text)
+            return self._reference_indicator(con, row_id)
+
+    def update_reference_indicator(
+        self,
+        indicator_id: int,
+        *,
+        text: str | None = None,
+        dimension_code: str | None = None,
+        notes: str | None = None,
+    ) -> dict[str, object] | None:
+        with self._connect() as con:
+            row = con.execute(INDICATOR_ROW.select().where(INDICATOR_ROW.c.id == indicator_id)).mappings().first()
+            if row is None:
+                return None
+            values: dict[str, object] = {}
+            if text is not None:
+                clean_text = _clean_title(text, fallback="")
+                if clean_text:
+                    values["base_text"] = clean_text
+            if dimension_code is not None:
+                values["dimension_id"] = _ensure_dimension(con, dimension_code)
+            if notes is not None:
+                values["notes"] = notes
+            if values:
+                con.execute(INDICATOR_ROW.update().where(INDICATOR_ROW.c.id == indicator_id).values(**values))
+            return self._reference_indicator(con, indicator_id)
+
+    def delete_reference_indicator(self, indicator_id: int) -> bool:
+        with self._connect() as con:
+            exists = con.execute(sa.select(INDICATOR_ROW.c.id).where(INDICATOR_ROW.c.id == indicator_id)).scalar_one_or_none()
+            if exists is None:
+                return False
+            con.execute(INDICATOR_ROW.update().where(INDICATOR_ROW.c.id == indicator_id).values(status="deprecated"))
+            return True
+
+    def reference_archive(self, *, query: str = "", scope: str = "all", limit: int = 100) -> dict[str, object]:
+        """Return archived catalog groups, skills and indicators for catalog-admin."""
+
+        normalized_query = normalize_catalog_key(query)
+        safe_scope = scope if scope in {"all", "groups", "skills", "indicators"} else "all"
+        with self._connect() as con:
+            groups = self._archived_groups(con, normalized_query, limit) if safe_scope in {"all", "groups"} else []
+            skills = self._archived_skills(con, normalized_query, limit) if safe_scope in {"all", "skills"} else []
+            indicators = self._archived_indicators(con, normalized_query, limit) if safe_scope in {"all", "indicators"} else []
+            return {
+                "query": query,
+                "scope": safe_scope,
+                "groups": groups,
+                "skills": skills,
+                "indicators": indicators,
+                "counts": {"groups": len(groups), "skills": len(skills), "indicators": len(indicators)},
+            }
+
+    def restore_reference_archive_item(self, kind: Literal["group", "skill", "indicator"], item_id: int) -> dict[str, object]:
+        """Restore an archived catalog item and required parent records."""
+
+        with self._connect() as con:
+            if kind == "group":
+                row = con.execute(sa.select(COMPETENCY.c.id).where(COMPETENCY.c.id == item_id)).mappings().first()
+                if row is None:
+                    return {"status": "missing", "kind": kind, "id": item_id}
+                con.execute(COMPETENCY.update().where(COMPETENCY.c.id == item_id).values(status="active"))
+                return {"status": "restored", "kind": kind, "id": item_id}
+            if kind == "skill":
+                skill = con.execute(sa.select(SKILL.c.id).where(SKILL.c.id == item_id)).mappings().first()
+                if skill is None:
+                    return {"status": "missing", "kind": kind, "id": item_id}
+                con.execute(SKILL.update().where(SKILL.c.id == item_id).values(status="active"))
+                self._restore_skill_parents(con, item_id)
+                return {"status": "restored", "kind": kind, "id": item_id}
+            indicator = con.execute(sa.select(INDICATOR_ROW.c.id, INDICATOR_ROW.c.competency_skill_id).where(INDICATOR_ROW.c.id == item_id)).mappings().first()
+            if indicator is None:
+                return {"status": "missing", "kind": kind, "id": item_id}
+            con.execute(INDICATOR_ROW.update().where(INDICATOR_ROW.c.id == item_id).values(status="active"))
+            self._restore_competency_skill_parents(con, int(indicator["competency_skill_id"]))
+            return {"status": "restored", "kind": kind, "id": item_id}
+
     def set_competency_review_status(self, competency_id: int, *, accepted: bool) -> dict[str, object]:
         status = "active" if accepted else "deprecated"
         review_state = "accepted" if accepted else "draft"
@@ -636,6 +891,187 @@ class CurriculumCatalogRepo:
                 .values(review_state=review_state)
             )
             return {"status": "accepted" if accepted else "rejected", "competency_id": competency_id}
+
+    def list_candidate_competencies(self, *, limit: int = 100) -> dict[str, object]:
+        """Return candidate competency review workspace for the catalog-admin UI."""
+
+        with self._connect() as con:
+            profile_id = _select_id(con, PROFILE, PROFILE.c.slug == SERVICE_PROFILE_SLUG)
+            if profile_id is None:
+                return {"candidates": [], "competency_options": [], "open_count": 0}
+            review_sq = (
+                sa.select(
+                    REVIEW_QUEUE.c.entity_id.label("competency_id"),
+                    sa.func.min(REVIEW_QUEUE.c.id).label("review_id"),
+                    sa.func.max(REVIEW_QUEUE.c.reason_code).label("reason_code"),
+                    sa.func.max(REVIEW_QUEUE.c.details).label("details"),
+                    sa.func.max(REVIEW_QUEUE.c.created_at).label("created_at"),
+                )
+                .where(REVIEW_QUEUE.c.entity_type == "competency", REVIEW_QUEUE.c.status == "open")
+                .group_by(REVIEW_QUEUE.c.entity_id)
+                .subquery()
+            )
+            stmt = (
+                sa.select(
+                    PROFILE_COMPETENCY.c.id.label("profile_competency_id"),
+                    PROFILE_COMPETENCY.c.review_state,
+                    COMPETENCY.c.id.label("competency_id"),
+                    COMPETENCY.c.title,
+                    COMPETENCY.c.status,
+                    review_sq.c.review_id,
+                    review_sq.c.reason_code,
+                    review_sq.c.details,
+                    review_sq.c.created_at,
+                    sa.func.count(sa.distinct(COMPETENCY_SKILL.c.id)).label("skill_count"),
+                )
+                .select_from(
+                    PROFILE_COMPETENCY.join(COMPETENCY, COMPETENCY.c.id == PROFILE_COMPETENCY.c.competency_id)
+                    .outerjoin(COMPETENCY_SKILL, COMPETENCY_SKILL.c.profile_competency_id == PROFILE_COMPETENCY.c.id)
+                    .outerjoin(review_sq, review_sq.c.competency_id == COMPETENCY.c.id)
+                )
+                .where(
+                    PROFILE_COMPETENCY.c.profile_id == profile_id,
+                    sa.or_(
+                        PROFILE_COMPETENCY.c.review_state == "needs_review",
+                        COMPETENCY.c.status == "candidate",
+                        review_sq.c.review_id.is_not(None),
+                    ),
+                )
+                .group_by(
+                    PROFILE_COMPETENCY.c.id,
+                    PROFILE_COMPETENCY.c.review_state,
+                    COMPETENCY.c.id,
+                    COMPETENCY.c.title,
+                    COMPETENCY.c.status,
+                    review_sq.c.review_id,
+                    review_sq.c.reason_code,
+                    review_sq.c.details,
+                    review_sq.c.created_at,
+                )
+                .order_by(PROFILE_COMPETENCY.c.id.desc())
+                .limit(limit)
+            )
+            candidates = []
+            for row in con.execute(stmt).mappings().all():
+                item = dict(row)
+                item["profile_competency_id"] = int(item["profile_competency_id"])
+                item["competency_id"] = int(item["competency_id"])
+                item["review_id"] = int(item["review_id"]) if item["review_id"] is not None else None
+                item["skill_count"] = int(item["skill_count"] or 0)
+                item["skills"] = self._candidate_competency_skills(con, item["profile_competency_id"])
+                similar = self._candidate_competency_similarity(con, item["competency_id"], item["profile_competency_id"])
+                item["similar_competencies"] = similar
+                item["nearest_competency"] = similar[0] if similar else None
+                candidates.append(item)
+            return {
+                "candidates": candidates,
+                "competency_options": self._candidate_competency_options(con),
+                "open_count": sum(1 for item in candidates if item["review_state"] == "needs_review" or item["review_id"] is not None),
+            }
+
+    def rename_candidate_competency(self, competency_id: int, new_title: str) -> dict[str, object]:
+        title = _clean_title(new_title, fallback="")
+        if not title:
+            return {"status": "empty_title", "competency_id": competency_id}
+        normalized_title = normalize_catalog_key(title)
+        with self._connect() as con:
+            existing = con.execute(
+                sa.select(COMPETENCY.c.id).where(COMPETENCY.c.normalized_title == normalized_title, COMPETENCY.c.id != competency_id)
+            ).scalar_one_or_none()
+            if existing is not None:
+                return {"status": "conflict", "competency_id": competency_id, "target_competency_id": int(existing)}
+            result = con.execute(
+                COMPETENCY.update()
+                .where(COMPETENCY.c.id == competency_id)
+                .values(title=title, normalized_title=normalized_title)
+            )
+            if result.rowcount <= 0:
+                return {"status": "missing", "competency_id": competency_id}
+            con.execute(PROFILE_COMPETENCY.update().where(PROFILE_COMPETENCY.c.competency_id == competency_id).values(title_in_source=title))
+            con.execute(
+                SOURCE_BLOCK.update()
+                .where(
+                    SOURCE_BLOCK.c.id.in_(
+                        sa.select(PROFILE_COMPETENCY.c.source_block_id).where(PROFILE_COMPETENCY.c.competency_id == competency_id)
+                    )
+                )
+                .values(raw_title=title)
+            )
+            return {"status": "renamed", "competency_id": competency_id, "title": title}
+
+    def resolve_candidate_competency(self, competency_id: int, action: Literal["accept", "reject", "review"], note: str = "") -> dict[str, object]:
+        now = datetime.now(UTC)
+        status_by_action = {"accept": "active", "reject": "deprecated", "review": "candidate"}
+        state_by_action = {"accept": "accepted", "reject": "rejected", "review": "needs_review"}
+        review_status = {"accept": "resolved", "reject": "ignored", "review": "open"}[action]
+        with self._connect() as con:
+            if _select_id(con, COMPETENCY, COMPETENCY.c.id == competency_id) is None:
+                return {"status": "missing", "competency_id": competency_id}
+            con.execute(COMPETENCY.update().where(COMPETENCY.c.id == competency_id).values(status=status_by_action[action]))
+            pc_ids = [
+                int(value)
+                for value in con.execute(
+                    sa.select(PROFILE_COMPETENCY.c.id).where(PROFILE_COMPETENCY.c.competency_id == competency_id)
+                ).scalars()
+            ]
+            con.execute(
+                PROFILE_COMPETENCY.update()
+                .where(PROFILE_COMPETENCY.c.competency_id == competency_id)
+                .values(review_state=state_by_action[action])
+            )
+            if pc_ids:
+                con.execute(
+                    COMPETENCY_SKILL.update()
+                    .where(COMPETENCY_SKILL.c.profile_competency_id.in_(pc_ids))
+                    .values(review_state=state_by_action[action])
+                )
+            update = (
+                REVIEW_QUEUE.update()
+                .where(REVIEW_QUEUE.c.entity_type == "competency", REVIEW_QUEUE.c.entity_id == competency_id)
+                .values(
+                    status=review_status,
+                    resolution_note=note.strip() or None,
+                    reviewed_at=None if action == "review" else now,
+                    updated_at=now,
+                )
+            )
+            result = con.execute(update)
+            if action == "review" and result.rowcount <= 0:
+                self.enqueue_review(
+                    entity_type="competency",
+                    entity_id=competency_id,
+                    source_ref="reference-ui",
+                    reason_code="candidate_reopened",
+                    severity="warning",
+                    details=note.strip() or "Кандидатная competency возвращена на проверку.",
+                    _connection=con,
+                )
+            return {"status": action, "competency_id": competency_id}
+
+    def move_candidate_competency_skill(self, competency_skill_id: int, target_competency_id: int) -> dict[str, object]:
+        with self._connect() as con:
+            return self._move_candidate_competency_skill(con, competency_skill_id, target_competency_id)
+
+    def merge_candidate_competency(self, competency_id: int, target_competency_id: int) -> dict[str, object]:
+        if competency_id == target_competency_id:
+            return {"status": "same_competency", "competency_id": competency_id}
+        with self._connect() as con:
+            links = [
+                int(value)
+                for value in con.execute(
+                    sa.select(COMPETENCY_SKILL.c.id)
+                    .select_from(COMPETENCY_SKILL.join(PROFILE_COMPETENCY, PROFILE_COMPETENCY.c.id == COMPETENCY_SKILL.c.profile_competency_id))
+                    .where(PROFILE_COMPETENCY.c.competency_id == competency_id)
+                ).scalars()
+            ]
+            moved = 0
+            for link_id in links:
+                result = self._move_candidate_competency_skill(con, link_id, target_competency_id)
+                if result.get("status") in {"moved", "deduplicated"}:
+                    moved += 1
+            con.execute(COMPETENCY.update().where(COMPETENCY.c.id == competency_id).values(status="deprecated"))
+            self._resolve_candidate_review_queue(con, competency_id, "ignored", f"Слито с competency #{target_competency_id}.")
+            return {"status": "merged", "competency_id": competency_id, "target_competency_id": target_competency_id, "moved": moved}
 
     def enqueue_review(
         self,
@@ -677,22 +1113,173 @@ class CurriculumCatalogRepo:
                 ),
             )
 
-    def list_review_queue(self, *, status: ReviewStatus | None = "open", limit: int = 100) -> list[dict[str, object]]:
+    def list_review_queue(
+        self,
+        *,
+        status: ReviewStatus | None = "open",
+        severity: str | None = None,
+        reason_code: str | None = None,
+        entity_type: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, object]]:
         with self._connect() as con:
             stmt = REVIEW_QUEUE.select().order_by(REVIEW_QUEUE.c.id).limit(limit)
             if status is not None:
                 stmt = stmt.where(REVIEW_QUEUE.c.status == status)
+            if severity is not None:
+                stmt = stmt.where(REVIEW_QUEUE.c.severity == severity)
+            if reason_code is not None:
+                stmt = stmt.where(REVIEW_QUEUE.c.reason_code == reason_code)
+            if entity_type is not None:
+                stmt = stmt.where(REVIEW_QUEUE.c.entity_type == entity_type)
             return [dict(row) for row in con.execute(stmt).mappings().all()]
 
-    def resolve_review_item(self, review_id: int, *, status: Literal["resolved", "ignored"], note: str = "") -> bool:
+    def resolve_review_item(
+        self, review_id: int, *, status: Literal["resolved", "ignored", "open"], note: str = ""
+    ) -> bool:
         now = datetime.now(UTC)
+        # Returning an item to the queue (open) clears the resolution timestamp.
+        reviewed_at = None if status == "open" else now
         with self._connect() as con:
             result = con.execute(
                 REVIEW_QUEUE.update()
                 .where(REVIEW_QUEUE.c.id == review_id)
-                .values(status=status, resolution_note=note, reviewed_at=now, updated_at=now)
+                .values(status=status, resolution_note=note, reviewed_at=reviewed_at, updated_at=now)
             )
             return result.rowcount > 0
+
+    def list_artifact_templates(self, *, active_only: bool = False) -> list[dict[str, object]]:
+        """Load methodologist-managed UP artifact templates with scopes."""
+        with self._connect() as con:
+            stmt = CURRICULUM_ARTIFACT_TEMPLATE.select().order_by(
+                CURRICULUM_ARTIFACT_TEMPLATE.c.priority,
+                CURRICULUM_ARTIFACT_TEMPLATE.c.id,
+            )
+            if active_only:
+                stmt = stmt.where(CURRICULUM_ARTIFACT_TEMPLATE.c.status == "active")
+            return [self._artifact_template_payload(con, row) for row in con.execute(stmt).mappings().all()]
+
+    def get_artifact_template(self, template_id: int) -> dict[str, object] | None:
+        with self._connect() as con:
+            row = con.execute(CURRICULUM_ARTIFACT_TEMPLATE.select().where(CURRICULUM_ARTIFACT_TEMPLATE.c.id == template_id)).mappings().first()
+            return self._artifact_template_payload(con, row) if row is not None else None
+
+    def upsert_artifact_template(
+        self,
+        *,
+        code: str,
+        title: str,
+        artifact_family: str,
+        artifact_description: str,
+        project_name_pattern: str = "",
+        materials_pattern: str = "",
+        storytelling_pattern: str = "",
+        validation_criteria: str = "",
+        priority: int = 100,
+        status: Literal["active", "draft", "deprecated"] = "active",
+        source: str = "methodologist",
+        scopes: Iterable[dict[str, object]] = (),
+    ) -> dict[str, object]:
+        normalized_code = _slug_catalog_key(code or title)
+        clean_title = _clean_title(title, fallback="Шаблон артефакта")
+        now = datetime.now(UTC)
+        with self._connect() as con:
+            existing = con.execute(
+                sa.select(CURRICULUM_ARTIFACT_TEMPLATE.c.id).where(CURRICULUM_ARTIFACT_TEMPLATE.c.code == normalized_code)
+            ).scalar_one_or_none()
+            values = {
+                "code": normalized_code,
+                "title": clean_title,
+                "artifact_family": artifact_family or "practice",
+                "artifact_description": artifact_description.strip(),
+                "project_name_pattern": project_name_pattern.strip(),
+                "materials_pattern": materials_pattern.strip(),
+                "storytelling_pattern": storytelling_pattern.strip(),
+                "validation_criteria": validation_criteria.strip(),
+                "priority": int(priority or 100),
+                "status": status,
+                "source": source or "methodologist",
+                "updated_at": now,
+            }
+            if existing is None:
+                template_id = _insert_id(con, CURRICULUM_ARTIFACT_TEMPLATE.insert().values(**values))
+            else:
+                template_id = int(existing)
+                con.execute(CURRICULUM_ARTIFACT_TEMPLATE.update().where(CURRICULUM_ARTIFACT_TEMPLATE.c.id == template_id).values(**values))
+            self._replace_artifact_template_scopes(con, template_id, scopes)
+            row = con.execute(CURRICULUM_ARTIFACT_TEMPLATE.select().where(CURRICULUM_ARTIFACT_TEMPLATE.c.id == template_id)).mappings().one()
+            return self._artifact_template_payload(con, row)
+
+    def set_artifact_template_status(self, template_id: int, status: Literal["active", "draft", "deprecated"]) -> dict[str, object] | None:
+        with self._connect() as con:
+            result = con.execute(
+                CURRICULUM_ARTIFACT_TEMPLATE.update()
+                .where(CURRICULUM_ARTIFACT_TEMPLATE.c.id == template_id)
+                .values(status=status, updated_at=datetime.now(UTC))
+            )
+            if result.rowcount <= 0:
+                return None
+            row = con.execute(CURRICULUM_ARTIFACT_TEMPLATE.select().where(CURRICULUM_ARTIFACT_TEMPLATE.c.id == template_id)).mappings().one()
+            return self._artifact_template_payload(con, row)
+
+    def create_profile_brief(self, raw_text: str, *, spec: dict[str, Any] | None = None) -> int:
+        spec = spec or {}
+        with self._connect() as con:
+            return _insert_id(
+                con,
+                PROFILE_BRIEF.insert().values(
+                    raw_text=raw_text,
+                    role=spec.get("role"),
+                    seniority=spec.get("seniority"),
+                    domain=spec.get("domain"),
+                    metadata_json=spec,
+                ),
+            )
+
+    def create_intake_job(
+        self,
+        *,
+        brief_text: str,
+        source_kind: Literal["text", "file"] = "text",
+        source_name: str | None = None,
+        file_path: str | None = None,
+        use_council: bool = True,
+    ) -> dict[str, object]:
+        now = datetime.now(UTC)
+        with self._connect() as con:
+            job_id = _insert_id(
+                con,
+                INTAKE_JOB.insert().values(
+                    source_kind=source_kind,
+                    source_name=source_name,
+                    file_path=file_path,
+                    brief_text=brief_text,
+                    use_council=1 if use_council else 0,
+                    created_at=now,
+                    updated_at=now,
+                ),
+            )
+        return self.get_intake_job(job_id) or {"id": job_id}
+
+    def update_intake_job(self, job_id: int, **patch: Any) -> dict[str, object] | None:
+        if not patch:
+            return self.get_intake_job(job_id)
+        patch["updated_at"] = datetime.now(UTC)
+        with self._connect() as con:
+            result = con.execute(INTAKE_JOB.update().where(INTAKE_JOB.c.id == job_id).values(**patch))
+            if result.rowcount <= 0:
+                return None
+        return self.get_intake_job(job_id)
+
+    def get_intake_job(self, job_id: int) -> dict[str, object] | None:
+        with self._connect() as con:
+            row = con.execute(INTAKE_JOB.select().where(INTAKE_JOB.c.id == job_id)).mappings().first()
+            return _intake_job_from_row(row) if row else None
+
+    def list_intake_jobs(self, *, limit: int = 8) -> list[dict[str, object]]:
+        with self._connect() as con:
+            rows = con.execute(INTAKE_JOB.select().order_by(INTAKE_JOB.c.created_at.desc(), INTAKE_JOB.c.id.desc()).limit(limit)).mappings().all()
+            return [_intake_job_from_row(row) for row in rows]
 
     def reference_summary(self) -> dict[str, int]:
         """Return catalog counters for the reference dashboard."""
@@ -832,6 +1419,34 @@ class CurriculumCatalogRepo:
                 **self._reference_competency_summary(con, row),
                 "skills": self._reference_competency_skills(con, competency_id),
             }
+
+    def create_reference_group(
+        self,
+        *,
+        title: str,
+        description: str = "",
+        status: str = "active",
+    ) -> dict[str, object] | None:
+        """Create an empty competency group explicitly (methodologist action, no review)."""
+
+        clean_title = _clean_title(title, DEFAULT_COMPETENCY_TITLE)
+        normalized_title = normalize_catalog_key(clean_title)
+        with self._connect() as con:
+            existing = con.execute(
+                sa.select(COMPETENCY.c.id).where(COMPETENCY.c.normalized_title == normalized_title)
+            ).scalar_one_or_none()
+            if existing is not None:
+                return None
+            competency_id = _insert_id(
+                con,
+                COMPETENCY.insert().values(
+                    normalized_title=normalized_title,
+                    title=clean_title,
+                    description=description.strip() or "Группа создана методологом.",
+                    status=status,
+                ),
+            )
+        return self.get_reference_competency(competency_id)
 
     def update_reference_competency(
         self,
@@ -1207,11 +1822,12 @@ class CurriculumCatalogRepo:
                 INDICATOR_ROW.c.base_text,
                 INDICATOR_ROW.c.raw_number,
                 INDICATOR_ROW.c.notes,
+                INDICATOR_ROW.c.status,
                 DIMENSION.c.code.label("dimension_code"),
                 DIMENSION.c.title.label("dimension_title"),
             )
             .select_from(INDICATOR_ROW.join(DIMENSION, DIMENSION.c.id == INDICATOR_ROW.c.dimension_id))
-            .where(INDICATOR_ROW.c.competency_skill_id == competency_skill_id)
+            .where(INDICATOR_ROW.c.competency_skill_id == competency_skill_id, INDICATOR_ROW.c.status != "deprecated")
             .order_by(INDICATOR_ROW.c.source_row_number, INDICATOR_ROW.c.id)
         )
         return [
@@ -1220,12 +1836,466 @@ class CurriculumCatalogRepo:
                 "text": row["base_text"] or "",
                 "raw_number": row["raw_number"] or "",
                 "notes": row["notes"] or "",
+                "status": row["status"],
                 "dimension_code": row["dimension_code"],
                 "dimension_title": row["dimension_title"],
                 "levels": self._reference_indicator_levels(con, int(row["id"])),
             }
             for row in con.execute(stmt).mappings().all()
         ]
+
+    def _reference_indicator(self, con: Connection, indicator_id: int) -> dict[str, object] | None:
+        stmt = (
+            sa.select(
+                INDICATOR_ROW.c.id,
+                INDICATOR_ROW.c.competency_skill_id,
+                INDICATOR_ROW.c.base_text,
+                INDICATOR_ROW.c.raw_number,
+                INDICATOR_ROW.c.notes,
+                INDICATOR_ROW.c.status,
+                DIMENSION.c.code.label("dimension_code"),
+                DIMENSION.c.title.label("dimension_title"),
+            )
+            .select_from(INDICATOR_ROW.join(DIMENSION, DIMENSION.c.id == INDICATOR_ROW.c.dimension_id))
+            .where(INDICATOR_ROW.c.id == indicator_id)
+        )
+        row = con.execute(stmt).mappings().first()
+        if row is None:
+            return None
+        return {
+            "id": int(row["id"]),
+            "competency_skill_id": int(row["competency_skill_id"]),
+            "text": row["base_text"] or "",
+            "raw_number": row["raw_number"] or "",
+            "notes": row["notes"] or "",
+            "status": row["status"],
+            "dimension_code": row["dimension_code"],
+            "dimension_title": row["dimension_title"],
+            "levels": self._reference_indicator_levels(con, int(row["id"])),
+        }
+
+    def _skill_links(self, con: Connection, skill_id: int) -> list[dict[str, object]]:
+        stmt = (
+            sa.select(
+                COMPETENCY_SKILL.c.id.label("competency_skill_id"),
+                COMPETENCY_SKILL.c.review_state.label("competency_skill_state"),
+                COMPETENCY_SKILL.c.skill_order,
+                PROFILE_COMPETENCY.c.id.label("profile_competency_id"),
+                PROFILE_COMPETENCY.c.review_state.label("profile_competency_state"),
+                COMPETENCY.c.id.label("competency_id"),
+                COMPETENCY.c.title.label("competency_title"),
+                COMPETENCY.c.status.label("competency_status"),
+                PROFILE.c.id.label("profile_id"),
+                PROFILE.c.name.label("profile_name"),
+            )
+            .select_from(
+                COMPETENCY_SKILL.join(PROFILE_COMPETENCY, PROFILE_COMPETENCY.c.id == COMPETENCY_SKILL.c.profile_competency_id)
+                .join(COMPETENCY, COMPETENCY.c.id == PROFILE_COMPETENCY.c.competency_id)
+                .join(PROFILE, PROFILE.c.id == PROFILE_COMPETENCY.c.profile_id)
+            )
+            .where(COMPETENCY_SKILL.c.skill_id == skill_id)
+            .order_by(PROFILE.c.name, COMPETENCY.c.title, COMPETENCY_SKILL.c.skill_order, COMPETENCY_SKILL.c.id)
+        )
+        return [
+            {
+                **dict(row),
+                "competency_skill_id": int(row["competency_skill_id"]),
+                "profile_competency_id": int(row["profile_competency_id"]),
+                "competency_id": int(row["competency_id"]),
+                "profile_id": int(row["profile_id"]),
+                "indicators": self._reference_indicators(con, int(row["competency_skill_id"])),
+            }
+            for row in con.execute(stmt).mappings().all()
+        ]
+
+    def _first_competency_skill_id(self, con: Connection, skill_id: int) -> int | None:
+        value = con.execute(
+            sa.select(COMPETENCY_SKILL.c.id)
+            .where(COMPETENCY_SKILL.c.skill_id == skill_id)
+            .order_by(COMPETENCY_SKILL.c.skill_order, COMPETENCY_SKILL.c.id)
+            .limit(1)
+        ).scalar_one_or_none()
+        return int(value) if value is not None else None
+
+    def _archived_groups(self, con: Connection, normalized_query: str, limit: int) -> list[dict[str, object]]:
+        stmt = COMPETENCY.select().where(COMPETENCY.c.status == "deprecated").order_by(COMPETENCY.c.title, COMPETENCY.c.id).limit(limit)
+        if normalized_query:
+            stmt = stmt.where(
+                sa.or_(
+                    COMPETENCY.c.normalized_title.like(f"%{normalized_query}%"),
+                    sa.func.lower(COMPETENCY.c.description).like(f"%{normalized_query}%"),
+                )
+            )
+        return [self._reference_competency_summary(con, row) for row in con.execute(stmt).mappings().all()]
+
+    def _archived_skills(self, con: Connection, normalized_query: str, limit: int) -> list[dict[str, object]]:
+        stmt = SKILL.select().where(SKILL.c.status == "deprecated").order_by(SKILL.c.canonical_name, SKILL.c.id).limit(limit)
+        if normalized_query:
+            matching_alias_skill_ids = sa.select(SKILL_ALIAS.c.skill_id).where(SKILL_ALIAS.c.normalized_alias.like(f"%{normalized_query}%"))
+            stmt = stmt.where(sa.or_(SKILL.c.normalized_name.like(f"%{normalized_query}%"), SKILL.c.id.in_(matching_alias_skill_ids)))
+        items: list[dict[str, object]] = []
+        for row in con.execute(stmt).mappings().all():
+            skill = self._skill_from_row(con, row)
+            links = self._skill_links(con, skill.skill_id)
+            indicator_count = con.execute(
+                sa.select(sa.func.count())
+                .select_from(INDICATOR_ROW.join(COMPETENCY_SKILL, COMPETENCY_SKILL.c.id == INDICATOR_ROW.c.competency_skill_id))
+                .where(COMPETENCY_SKILL.c.skill_id == skill.skill_id)
+            ).scalar()
+            group_names = list(dict.fromkeys(str(link["competency_title"]) for link in links if link.get("competency_title")))
+            items.append(
+                {
+                    "skill_id": skill.skill_id,
+                    "canonical_name": skill.canonical_name,
+                    "skill_type": skill.skill_type,
+                    "status": skill.status,
+                    "aliases": list(skill.aliases),
+                    "group_names": group_names,
+                    "indicator_count": int(indicator_count or 0),
+                    "links": links,
+                }
+            )
+        return items
+
+    def _archived_indicators(self, con: Connection, normalized_query: str, limit: int) -> list[dict[str, object]]:
+        stmt = (
+            sa.select(
+                INDICATOR_ROW.c.id,
+                INDICATOR_ROW.c.competency_skill_id,
+                INDICATOR_ROW.c.base_text,
+                INDICATOR_ROW.c.raw_number,
+                INDICATOR_ROW.c.notes,
+                INDICATOR_ROW.c.status,
+                DIMENSION.c.code.label("dimension_code"),
+                DIMENSION.c.title.label("dimension_title"),
+                SKILL.c.id.label("skill_id"),
+                SKILL.c.canonical_name.label("skill_name"),
+                SKILL.c.status.label("skill_status"),
+                COMPETENCY.c.id.label("group_id"),
+                COMPETENCY.c.title.label("group_name"),
+                PROFILE.c.name.label("profile_name"),
+            )
+            .select_from(
+                INDICATOR_ROW.join(DIMENSION, DIMENSION.c.id == INDICATOR_ROW.c.dimension_id)
+                .join(COMPETENCY_SKILL, COMPETENCY_SKILL.c.id == INDICATOR_ROW.c.competency_skill_id)
+                .outerjoin(SKILL, SKILL.c.id == COMPETENCY_SKILL.c.skill_id)
+                .join(PROFILE_COMPETENCY, PROFILE_COMPETENCY.c.id == COMPETENCY_SKILL.c.profile_competency_id)
+                .join(COMPETENCY, COMPETENCY.c.id == PROFILE_COMPETENCY.c.competency_id)
+                .join(PROFILE, PROFILE.c.id == PROFILE_COMPETENCY.c.profile_id)
+            )
+            .where(INDICATOR_ROW.c.status == "deprecated")
+            .order_by(COMPETENCY.c.title, SKILL.c.canonical_name, INDICATOR_ROW.c.source_row_number, INDICATOR_ROW.c.id)
+            .limit(limit)
+        )
+        if normalized_query:
+            query_like = f"%{normalized_query}%"
+            stmt = stmt.where(
+                sa.or_(
+                    sa.func.lower(INDICATOR_ROW.c.base_text).like(query_like),
+                    sa.func.lower(INDICATOR_ROW.c.notes).like(query_like),
+                    SKILL.c.normalized_name.like(query_like),
+                    COMPETENCY.c.normalized_title.like(query_like),
+                    sa.func.lower(PROFILE.c.name).like(query_like),
+                )
+            )
+        return [
+            {
+                "id": int(row["id"]),
+                "competency_skill_id": int(row["competency_skill_id"]),
+                "text": row["base_text"] or "",
+                "raw_number": row["raw_number"] or "",
+                "notes": row["notes"] or "",
+                "status": row["status"],
+                "dimension_code": row["dimension_code"],
+                "dimension_title": row["dimension_title"],
+                "skill_id": int(row["skill_id"]) if row["skill_id"] is not None else None,
+                "skill_name": row["skill_name"] or "",
+                "skill_status": row["skill_status"] or "missing",
+                "group_id": int(row["group_id"]),
+                "group_name": row["group_name"],
+                "profile_name": row["profile_name"],
+            }
+            for row in con.execute(stmt).mappings().all()
+        ]
+
+    def _restore_skill_parents(self, con: Connection, skill_id: int) -> None:
+        for competency_skill_id in con.execute(sa.select(COMPETENCY_SKILL.c.id).where(COMPETENCY_SKILL.c.skill_id == skill_id)).scalars():
+            self._restore_competency_skill_parents(con, int(competency_skill_id))
+
+    def _restore_competency_skill_parents(self, con: Connection, competency_skill_id: int) -> None:
+        row = (
+            con.execute(
+                sa.select(COMPETENCY_SKILL.c.skill_id, PROFILE_COMPETENCY.c.id.label("profile_competency_id"), COMPETENCY.c.id.label("competency_id"))
+                .select_from(
+                    COMPETENCY_SKILL.join(PROFILE_COMPETENCY, PROFILE_COMPETENCY.c.id == COMPETENCY_SKILL.c.profile_competency_id).join(
+                        COMPETENCY,
+                        COMPETENCY.c.id == PROFILE_COMPETENCY.c.competency_id,
+                    )
+                )
+                .where(COMPETENCY_SKILL.c.id == competency_skill_id)
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            return
+        if row["skill_id"] is not None:
+            con.execute(SKILL.update().where(SKILL.c.id == int(row["skill_id"])).values(status="active"))
+        con.execute(PROFILE_COMPETENCY.update().where(PROFILE_COMPETENCY.c.id == int(row["profile_competency_id"])).values(review_state="accepted"))
+        con.execute(COMPETENCY_SKILL.update().where(COMPETENCY_SKILL.c.id == competency_skill_id).values(review_state="accepted"))
+        con.execute(COMPETENCY.update().where(COMPETENCY.c.id == int(row["competency_id"])).values(status="active"))
+
+    def _artifact_template_payload(self, con: Connection, row: sa.RowMapping) -> dict[str, object]:
+        template_id = int(row["id"])
+        scopes = self._artifact_template_scopes(con, template_id)
+        editable_scope = scopes[0] if scopes else {"scope_type": "coverage_area", "weight": 1.0}
+        return {
+            "id": template_id,
+            "code": row["code"],
+            "title": row["title"],
+            "artifact_family": row["artifact_family"],
+            "artifact_description": row["artifact_description"] or "",
+            "project_name_pattern": row["project_name_pattern"] or "",
+            "materials_pattern": row["materials_pattern"] or "",
+            "storytelling_pattern": row["storytelling_pattern"] or "",
+            "validation_criteria": row["validation_criteria"] or "",
+            "priority": int(row["priority"] or 100),
+            "status": row["status"],
+            "source": row["source"] or "manual",
+            "created_at": _iso_or_none(row["created_at"]),
+            "updated_at": _iso_or_none(row["updated_at"]),
+            "scopes": scopes,
+            "scope_type": editable_scope.get("scope_type") or "coverage_area",
+            "scope_weight": float(editable_scope.get("weight") or 1.0),
+            "scope_names": [str(scope.get("scope_name") or "") for scope in scopes if scope.get("scope_type") != "any" and str(scope.get("scope_name") or "").strip()],
+        }
+
+    def _artifact_template_scopes(self, con: Connection, template_id: int) -> list[dict[str, object]]:
+        rows = con.execute(
+            CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.select()
+            .where(CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.c.template_id == template_id)
+            .order_by(CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.c.weight.desc(), CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.c.id)
+        ).mappings()
+        return [
+            {
+                "id": int(row["id"]),
+                "template_id": int(row["template_id"]),
+                "scope_type": row["scope_type"],
+                "scope_id": int(row["scope_id"]) if row["scope_id"] is not None else None,
+                "scope_name": row["scope_name"] or "",
+                "normalized_scope_name": row["normalized_scope_name"] or normalize_catalog_key(row["scope_name"] or ""),
+                "weight": float(row["weight"] or 1.0),
+            }
+            for row in rows
+        ]
+
+    def _replace_artifact_template_scopes(self, con: Connection, template_id: int, scopes: Iterable[dict[str, object]]) -> None:
+        con.execute(CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.delete().where(CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.c.template_id == template_id))
+        normalized_scopes = list(_normalize_artifact_template_scopes(scopes))
+        if not normalized_scopes:
+            normalized_scopes = [{"scope_type": "any", "scope_name": "", "normalized_scope_name": "", "weight": 1.0}]
+        for scope in normalized_scopes:
+            con.execute(
+                CURRICULUM_ARTIFACT_TEMPLATE_SCOPE.insert().values(
+                    template_id=template_id,
+                    scope_type=scope["scope_type"],
+                    scope_id=scope.get("scope_id"),
+                    scope_name=scope.get("scope_name") or None,
+                    normalized_scope_name=scope.get("normalized_scope_name") or None,
+                    weight=float(scope.get("weight") or 1.0),
+                )
+            )
+
+    def _candidate_competency_skills(self, con: Connection, profile_competency_id: int) -> list[dict[str, object]]:
+        stmt = (
+            sa.select(
+                COMPETENCY_SKILL.c.id.label("competency_skill_id"),
+                COMPETENCY_SKILL.c.skill_id,
+                COMPETENCY_SKILL.c.source_skill_name,
+                COMPETENCY_SKILL.c.review_state,
+                SKILL.c.canonical_name,
+                SKILL.c.status.label("skill_status"),
+            )
+            .select_from(COMPETENCY_SKILL.outerjoin(SKILL, SKILL.c.id == COMPETENCY_SKILL.c.skill_id))
+            .where(COMPETENCY_SKILL.c.profile_competency_id == profile_competency_id)
+            .order_by(COMPETENCY_SKILL.c.skill_order, COMPETENCY_SKILL.c.id)
+        )
+        return [
+            {
+                "competency_skill_id": int(row["competency_skill_id"]),
+                "skill_id": int(row["skill_id"]) if row["skill_id"] is not None else None,
+                "source_skill_name": row["source_skill_name"],
+                "review_state": row["review_state"],
+                "canonical_name": row["canonical_name"] or row["source_skill_name"],
+                "skill_status": row["skill_status"] or "missing",
+            }
+            for row in con.execute(stmt).mappings().all()
+        ]
+
+    def _candidate_competency_options(self, con: Connection, limit: int = 200) -> list[dict[str, object]]:
+        rows = con.execute(
+            sa.select(COMPETENCY.c.id, COMPETENCY.c.title, COMPETENCY.c.status)
+            .where(COMPETENCY.c.status == "active")
+            .order_by(COMPETENCY.c.title, COMPETENCY.c.id)
+            .limit(limit)
+        ).mappings()
+        return [{"id": int(row["id"]), "title": row["title"], "status": row["status"]} for row in rows]
+
+    def _candidate_competency_similarity(
+        self,
+        con: Connection,
+        competency_id: int,
+        profile_competency_id: int,
+        limit: int = 5,
+    ) -> list[dict[str, object]]:
+        candidate = con.execute(sa.select(COMPETENCY.c.id, COMPETENCY.c.title).where(COMPETENCY.c.id == competency_id)).mappings().first()
+        if candidate is None:
+            return []
+        candidate_skills = {
+            int(value)
+            for value in con.execute(
+                sa.select(COMPETENCY_SKILL.c.skill_id).where(
+                    COMPETENCY_SKILL.c.profile_competency_id == profile_competency_id,
+                    COMPETENCY_SKILL.c.skill_id.is_not(None),
+                )
+            ).scalars()
+        }
+        candidate_tokens = _competency_token_set(candidate["title"])
+        active_rows = con.execute(
+            sa.select(COMPETENCY.c.id, COMPETENCY.c.title, COMPETENCY.c.status)
+            .where(COMPETENCY.c.status == "active", COMPETENCY.c.id != competency_id)
+            .order_by(COMPETENCY.c.title, COMPETENCY.c.id)
+        ).mappings()
+        scored: list[dict[str, object]] = []
+        for row in active_rows:
+            target_tokens = _competency_token_set(row["title"])
+            token_union = candidate_tokens | target_tokens
+            token_overlap = len(candidate_tokens & target_tokens) / len(token_union) if token_union else 0.0
+            title_ratio = difflib.SequenceMatcher(
+                None,
+                normalize_catalog_key(candidate["title"]),
+                normalize_catalog_key(row["title"]),
+            ).ratio()
+            target_skills = self._competency_skill_ids(con, int(row["id"]))
+            skill_overlap_count = len(candidate_skills & target_skills)
+            skill_overlap = skill_overlap_count / max(1, len(candidate_skills)) if candidate_skills else 0.0
+            score = round((0.45 * title_ratio + 0.35 * token_overlap + 0.20 * skill_overlap) * 100, 2)
+            if score < 28 and skill_overlap_count == 0:
+                continue
+            label, recommendation = _competency_similarity_label(score)
+            scored.append(
+                {
+                    "id": int(row["id"]),
+                    "title": row["title"],
+                    "status": row["status"],
+                    "score": score,
+                    "label": label,
+                    "recommendation": recommendation,
+                    "token_overlap_pct": round(token_overlap * 100, 2),
+                    "title_similarity_pct": round(title_ratio * 100, 2),
+                    "skill_overlap_count": skill_overlap_count,
+                    "candidate_skill_count": len(candidate_skills),
+                }
+            )
+        scored.sort(key=lambda item: (float(item["score"]), int(item["skill_overlap_count"])), reverse=True)
+        return scored[:limit]
+
+    def _competency_skill_ids(self, con: Connection, competency_id: int) -> set[int]:
+        rows = con.execute(
+            sa.select(COMPETENCY_SKILL.c.skill_id)
+            .select_from(COMPETENCY_SKILL.join(PROFILE_COMPETENCY, PROFILE_COMPETENCY.c.id == COMPETENCY_SKILL.c.profile_competency_id))
+            .where(PROFILE_COMPETENCY.c.competency_id == competency_id, COMPETENCY_SKILL.c.skill_id.is_not(None))
+        ).scalars()
+        return {int(value) for value in rows}
+
+    def _ensure_service_profile_competency(self, con: Connection, target_competency_id: int) -> int | None:
+        target = con.execute(COMPETENCY.select().where(COMPETENCY.c.id == target_competency_id)).mappings().first()
+        if target is None:
+            return None
+        context = self._ensure_catalog_context(con)
+        source_block_id = self._ensure_source_block(con, context.source_sheet_id, str(target["title"]))
+        profile_competency_id, _created = self._ensure_profile_competency(
+            con,
+            profile_id=context.profile_id,
+            competency_id=target_competency_id,
+            source_block_id=source_block_id,
+            title=str(target["title"]),
+            review_state="accepted",
+        )
+        return profile_competency_id
+
+    def _move_candidate_competency_skill(
+        self,
+        con: Connection,
+        competency_skill_id: int,
+        target_competency_id: int,
+    ) -> dict[str, object]:
+        target_profile_competency_id = self._ensure_service_profile_competency(con, target_competency_id)
+        if target_profile_competency_id is None:
+            return {"status": "target_missing", "competency_skill_id": competency_skill_id}
+        row = con.execute(
+            sa.select(
+                COMPETENCY_SKILL.c.id,
+                COMPETENCY_SKILL.c.profile_competency_id,
+                COMPETENCY_SKILL.c.skill_id,
+                COMPETENCY_SKILL.c.source_skill_name,
+                PROFILE_COMPETENCY.c.competency_id.label("source_competency_id"),
+            )
+            .select_from(COMPETENCY_SKILL.join(PROFILE_COMPETENCY, PROFILE_COMPETENCY.c.id == COMPETENCY_SKILL.c.profile_competency_id))
+            .where(COMPETENCY_SKILL.c.id == competency_skill_id)
+        ).mappings().first()
+        if row is None:
+            return {"status": "missing", "competency_skill_id": competency_skill_id}
+        duplicate_id = None
+        if row["skill_id"] is not None:
+            duplicate_id = con.execute(
+                sa.select(COMPETENCY_SKILL.c.id)
+                .where(
+                    COMPETENCY_SKILL.c.profile_competency_id == target_profile_competency_id,
+                    COMPETENCY_SKILL.c.skill_id == row["skill_id"],
+                )
+                .limit(1)
+            ).scalar_one_or_none()
+        if duplicate_id is not None:
+            con.execute(INDICATOR_ROW.update().where(INDICATOR_ROW.c.competency_skill_id == competency_skill_id).values(competency_skill_id=int(duplicate_id)))
+            con.execute(COMPETENCY_SKILL.delete().where(COMPETENCY_SKILL.c.id == competency_skill_id))
+            status = "deduplicated"
+        else:
+            next_order = _next_int(con, COMPETENCY_SKILL.c.skill_order, COMPETENCY_SKILL.c.profile_competency_id == target_profile_competency_id, step=10)
+            con.execute(
+                COMPETENCY_SKILL.update()
+                .where(COMPETENCY_SKILL.c.id == competency_skill_id)
+                .values(profile_competency_id=target_profile_competency_id, skill_order=next_order, review_state="accepted")
+            )
+            status = "moved"
+        source_competency_id = int(row["source_competency_id"])
+        self._close_candidate_competency_if_empty(
+            con,
+            source_competency_id,
+            f"Все skills перенесены в existing competency #{target_competency_id}.",
+        )
+        return {"status": status, "competency_skill_id": competency_skill_id, "target_competency_id": target_competency_id}
+
+    def _close_candidate_competency_if_empty(self, con: Connection, competency_id: int, note: str) -> bool:
+        remaining = con.execute(
+            sa.select(COMPETENCY_SKILL.c.id)
+            .select_from(COMPETENCY_SKILL.join(PROFILE_COMPETENCY, PROFILE_COMPETENCY.c.id == COMPETENCY_SKILL.c.profile_competency_id))
+            .where(PROFILE_COMPETENCY.c.competency_id == competency_id)
+            .limit(1)
+        ).scalar_one_or_none()
+        if remaining is not None:
+            return False
+        con.execute(COMPETENCY.update().where(COMPETENCY.c.id == competency_id, COMPETENCY.c.status == "candidate").values(status="deprecated"))
+        self._resolve_candidate_review_queue(con, competency_id, "ignored", note)
+        return True
+
+    def _resolve_candidate_review_queue(self, con: Connection, competency_id: int, status: ReviewStatus, note: str) -> None:
+        now = datetime.now(UTC)
+        con.execute(
+            REVIEW_QUEUE.update()
+            .where(REVIEW_QUEUE.c.entity_type == "competency", REVIEW_QUEUE.c.entity_id == competency_id)
+            .values(status=status, resolution_note=note.strip() or None, reviewed_at=now if status != "open" else None, updated_at=now)
+        )
 
     def _reference_indicator_levels(self, con: Connection, indicator_id: int) -> list[dict[str, object]]:
         stmt = (
@@ -1796,6 +2866,28 @@ def _project_from_row(row: sa.RowMapping) -> UPProject:
     )
 
 
+def _intake_job_from_row(row: sa.RowMapping) -> dict[str, object]:
+    payload = _json_object(row["result_payload"])
+    return {
+        "id": int(row["id"]),
+        "brief_id": int(row["brief_id"]) if row["brief_id"] is not None else None,
+        "source_kind": row["source_kind"],
+        "source_name": row["source_name"],
+        "file_path": row["file_path"],
+        "brief_text": row["brief_text"],
+        "status": row["status"],
+        "current_stage": row["current_stage"],
+        "progress_note": row["progress_note"],
+        "error_text": row["error_text"],
+        "result_payload": payload,
+        "use_council": bool(row["use_council"]),
+        "created_at": _iso_or_none(row["created_at"]),
+        "updated_at": _iso_or_none(row["updated_at"]),
+        "started_at": _iso_or_none(row["started_at"]),
+        "finished_at": _iso_or_none(row["finished_at"]),
+    }
+
+
 def _json_object(value: object) -> dict[str, Any]:
     if isinstance(value, dict):
         return dict(value)
@@ -1864,6 +2956,43 @@ def _clean_title(value: object | None, fallback: str = DEFAULT_COMPETENCY_TITLE)
     return clean or fallback
 
 
+def _competency_token_set(value: object | None) -> set[str]:
+    stopwords = {"и", "в", "во", "на", "для", "по", "с", "со", "к", "от", "до", "при", "или", "а", "the", "and", "of", "for"}
+    return {token for token in normalize_catalog_key(value).split() if len(token) > 2 and token not in stopwords}
+
+
+def _competency_similarity_label(score: float) -> tuple[str, str]:
+    if score >= 82:
+        return "Высокая похожесть", "merge"
+    if score >= 62:
+        return "Средняя похожесть", "review"
+    return "Слабая похожесть", "create"
+
+
+def _slug_catalog_key(value: str) -> str:
+    normalized = normalize_catalog_key(value)
+    slug = "-".join(part for part in normalized.split() if part)
+    return slug or "item"
+
+
+def _normalize_artifact_template_scopes(scopes: Iterable[dict[str, object]]) -> Iterator[dict[str, object]]:
+    for scope in scopes:
+        scope_type = str(scope.get("scope_type") or "coverage_area").strip() or "coverage_area"
+        scope_name = str(scope.get("scope_name") or "").strip()
+        if scope_type == "any":
+            yield {"scope_type": "any", "scope_name": "", "normalized_scope_name": "", "weight": float(scope.get("weight") or 1.0)}
+            continue
+        if not scope_name:
+            continue
+        yield {
+            "scope_type": scope_type,
+            "scope_id": _optional_int(scope.get("scope_id")),
+            "scope_name": scope_name,
+            "normalized_scope_name": str(scope.get("normalized_scope_name") or "").strip() or normalize_catalog_key(scope_name),
+            "weight": float(scope.get("weight") or 1.0),
+        }
+
+
 def _insert_id(con: Connection, stmt: sa.Insert) -> int:
     result = con.execute(stmt)
     if result.inserted_primary_key and result.inserted_primary_key[0] is not None:
@@ -1904,7 +3033,7 @@ def _ensure_indicator_row(
     source_note: str,
 ) -> tuple[int, bool]:
     existing = con.execute(
-        sa.select(INDICATOR_ROW.c.id)
+        sa.select(INDICATOR_ROW.c.id, INDICATOR_ROW.c.status)
         .where(
             INDICATOR_ROW.c.competency_skill_id == competency_skill_id,
             INDICATOR_ROW.c.dimension_id == dimension_id,
@@ -1914,7 +3043,9 @@ def _ensure_indicator_row(
         .limit(1)
     ).scalar_one_or_none()
     if existing is not None:
-        return int(existing), False
+        if existing["status"] == "deprecated":
+            con.execute(INDICATOR_ROW.update().where(INDICATOR_ROW.c.id == existing["id"]).values(status="active", notes=source_note))
+        return int(existing["id"]), False
     row_number = _next_int(con, INDICATOR_ROW.c.source_row_number, INDICATOR_ROW.c.competency_skill_id == competency_skill_id)
     row_id = _insert_id(
         con,

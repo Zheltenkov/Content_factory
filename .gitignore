@@ -36,6 +36,7 @@ Thumbs.db
 .serena/
 
 # Logs and local data stores
+.tmp/
 *.log
 *.jsonl
 *.sqlite
@@ -44,6 +45,10 @@ Thumbs.db
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Code knowledge graph (GitNexus index; was graphify-out/)
+.gitnexus/
+graphify-out/
 
 # Generated project artifacts
 legacy/**/reports/

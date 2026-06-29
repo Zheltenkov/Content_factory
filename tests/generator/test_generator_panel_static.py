@@ -34,7 +34,47 @@ def test_generator_panel_js_hits_real_curriculum_and_generator_endpoints() -> No
     assert 'request("/curriculum/plans")' in js
     assert "request(`/curriculum/plans/${planId}/cascade`)" in js
     assert "request(`/curriculum/projects/${projectId}`)" in js
-    assert 'request("/generator/runs/from-curriculum"' in js
+    assert 'request("/generator/runs/from-curriculum/async"' in js
+    assert 'request("/generator/runs/recent")' in js
+    assert "/generator/runs/${runId}/status" in js
+    assert "/generator/runs/${state.currentRunId}/cancel" in js
+    assert "/generator/runs/${state.currentRunId}/archive" in js
+    assert "/generator/runs/${state.currentRunId}/review/request-changes" in js
+    assert "/generator/runs/${state.currentRunId}/review/preview-changes" in js
+    assert "/generator/runs/${state.currentRunId}/review/approve-diff" in js
     assert "project_order: Number(state.currentProject.project.order)" in js
-    assert "pollGenerationStatus" not in js
-    assert "setInterval" not in js
+    assert "pollGenerationStatus" in js
+    assert "setTimeout" in js
+
+
+def test_generator_panel_keeps_legacy_controls_without_mocking_backend() -> None:
+    html = (STATIC / "generator" / "panel.html").read_text(encoding="utf-8")
+    js = (STATIC / "generator" / "panel.js").read_text(encoding="utf-8")
+
+    required_controls = [
+        'id="curriculumFile"',
+        'id="methodologyHumanReview"',
+        'id="direction"',
+        'id="projectType"',
+        'id="groupSize"',
+        'id="audienceLevel"',
+        'id="titleSeed"',
+        'id="storytellingType"',
+        'id="storytelling"',
+        'id="learningOutcomes"',
+        'id="skills"',
+        'id="includeDiagrams"',
+        'id="includeTables"',
+        'id="includeFormulas"',
+        'id="generateBonus"',
+        'id="regenerationComments"',
+        'id="methodologyAssistantChat"',
+        'id="assistantChatInput"',
+        'data-tab-target="generatorPractice"',
+        'data-tab-target="generatorRegen"',
+    ]
+
+    for control in required_controls:
+        assert control in html
+    assert "/curriculum/plans/import-csv" in js
+    assert "overrides: collectOverrides()" in js

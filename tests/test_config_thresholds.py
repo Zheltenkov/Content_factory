@@ -6,11 +6,31 @@ from pathlib import Path
 import yaml
 
 from app.core.config import get_thresholds
+from app.core.config.settings import Settings
 from app.core.methodology.harness import Harness, resolve_profile
 from app.core.methodology.rules import DocImage, GeneratedDoc
 from app.modules.checker.didactic.jury import DidacticJuryConfig
 
 ROOT = Path(__file__).resolve().parent.parent / "app/core/methodology/profiles"
+
+
+def test_settings_loads_database_url_from_dotenv_with_env_priority(monkeypatch) -> None:
+    dotenv = Path(".tmp/test_settings.env")
+    dotenv.parent.mkdir(exist_ok=True)
+    dotenv.write_text(
+        "APP_NAME=from-dotenv\nDATABASE_URL=postgresql://dotenv/db\nAPP_ENV=dotenv-env\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CONTENT_FACTORY_ENV_FILE", str(dotenv))
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    from_dotenv = Settings.from_env()
+    assert from_dotenv.app_name == "from-dotenv"
+    assert from_dotenv.database_url == "postgresql://dotenv/db"
+    assert from_dotenv.environment == "dotenv-env"
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://env/db")
+    assert Settings.from_env().database_url == "postgresql://env/db"
 
 
 def test_thresholds_yaml_is_single_source_for_structural_values() -> None:

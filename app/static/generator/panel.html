@@ -5,85 +5,365 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Генератор · Content Factory</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=s21-legacy-design" />
   </head>
-  <body>
-    <main class="workbench generator-panel" data-module="generator">
-      <header class="workbench-header">
-        <a class="back-link" href="/">Content Factory</a>
-        <h1>Генератор</h1>
-        <nav class="toolbar" aria-label="Связанные модули">
-          <a class="btn" href="/static/curriculum/panel.html">Учебные планы</a>
-          <a class="btn" href="/static/checker/panel.html">Проверка</a>
-        </nav>
-      </header>
-
-      <section class="tool-grid generator-layout">
-        <form id="generatorForm" class="editor-panel">
-          <h2>Источник из БД</h2>
-          <label>
-            Учебный план
-            <select id="planSelect"></select>
-          </label>
-          <div class="form-row two">
-            <label>
-              Блок
-              <select id="blockSelect"></select>
-            </label>
-            <label>
-              Проект
-              <select id="projectSelect"></select>
-            </label>
-          </div>
-          <div class="form-row two">
-            <label>
-              Профиль
-              <select id="profileSelect">
-                <option value="_base">base</option>
-                <option value="kids">kids</option>
-                <option value="commerce">commerce</option>
-              </select>
-            </label>
-            <label>
-              Тип программы
-              <input id="programType" type="text" placeholder="optional" />
-            </label>
-          </div>
-          <div id="projectSummary" class="empty-inline">Загрузка учебных планов...</div>
-          <button type="submit">Сгенерировать README</button>
-          <div id="generatorStatus" class="status-line"></div>
-        </form>
-
-        <aside class="side-panel">
-          <h2>Запуск</h2>
-          <div class="progress-track" aria-hidden="true">
-            <div id="generatorProgress" class="progress-bar"></div>
-          </div>
-          <div id="generatorTimeline" class="run-timeline"></div>
-          <div id="generatorMetrics" class="metrics-grid"></div>
-        </aside>
-      </section>
-
-      <section class="editor-panel generator-result-panel">
-        <div class="tab-list" role="tablist" aria-label="Результат генерации">
-          <button class="tab-button active" type="button" data-tab-target="generatorReadme" aria-selected="true">README</button>
-          <button class="tab-button" type="button" data-tab-target="generatorMetadata" aria-selected="false">Контекст</button>
-          <button class="tab-button" type="button" data-tab-target="generatorIssues" aria-selected="false">Проверки</button>
-          <button class="tab-button" type="button" data-tab-target="generatorArtifacts" aria-selected="false">Артефакты</button>
+  <body class="s21-product page-generate">
+    <header class="hdr dashboard-header--menu generator-topbar">
+      <a class="hdr-brand" href="/app" aria-label="Главная">
+        <span class="hdr-mark">21</span>
+        <span class="hdr-title">
+          <b>Генератор</b>
+          <span>учебных проектов · v 2.4</span>
+        </span>
+      </a>
+      <nav class="hdr-nav dashboard-nav" aria-label="Основные разделы">
+        <a href="/app">Главная</a>
+        <a class="active" href="/app/generate">Генерация</a>
+        <a href="/app/check">Проверка</a>
+        <a href="/app/translate">Перевод</a>
+        <a href="/app/instruction">Документация</a>
+      </nav>
+      <div class="hdr-spacer"></div>
+      <div class="hdr-right dashboard-header-actions">
+        <span class="hdr-lang"><span class="on">RU</span><span>EN</span></span>
+        <button class="hdr-user dashboard-user" type="button" title="Профиль">
+          <span class="av dashboard-user-avatar">МК</span><span>М. Кравцова</span>
+        </button>
+      </div>
+      <div class="dashboard-model-picker" data-selected-model="openrouter" hidden>
+        <button id="modelMenuButton" class="dashboard-model-button" type="button" aria-label="Выбрать модель ИИ" aria-haspopup="listbox" aria-expanded="false">ИИ</button>
+        <div id="modelMenu" class="dashboard-model-menu" role="listbox" aria-label="Модель ИИ" hidden>
+          <button type="button" role="option" data-model="openrouter" aria-selected="true">openrouter</button>
+          <button type="button" role="option" data-model="deepseek" aria-selected="false">deepseek</button>
+          <button type="button" role="option" data-model="gigachat" aria-selected="false">gigachat</button>
         </div>
-        <section id="generatorReadme" class="tab-content active" role="tabpanel">
-          <article id="generatorOutput" class="markdown-preview output-preview"></article>
-        </section>
-        <section id="generatorMetadata" class="tab-content" role="tabpanel" hidden>
-          <div id="generatorMetadataView"></div>
-        </section>
-        <section id="generatorIssues" class="tab-content" role="tabpanel" hidden>
-          <div id="generatorIssuesView"></div>
-        </section>
-        <section id="generatorArtifacts" class="tab-content" role="tabpanel" hidden>
-          <div id="generatorArtifactsView"></div>
-        </section>
-      </section>
+      </div>
+    </header>
+
+    <div class="s21-subbar generator-subbar">
+      <a id="generatorBackLink" href="/app">← Главное меню</a>
+      <span class="sep">/</span>
+      <strong id="generatorSubbarTitle">Генерация README</strong>
+      <span id="generatorSubbarStatus" class="badge info">ЧЕРНОВИК</span>
+      <div id="generatorSubbarRight" class="right">✓ Автосохранено · локальное состояние</div>
+    </div>
+
+    <div id="generationLogs" class="generation-status-panel" hidden>
+      <div class="generation-status-card">
+        <div class="generation-status-meta">
+          <span><strong>Время:</strong> <span id="generationTimer">00:00</span></span>
+          <span><strong>Этап:</strong> <span id="currentAgent">Инициализация...</span></span>
+        </div>
+        <div id="logContent" class="generation-progress-strip"></div>
+        <div id="generationTimeline" class="s21-run-timeline" aria-label="Этапы генерации"></div>
+        <div id="methodologyLiveStatus" class="methodology-panel methodology-panel-compact" hidden></div>
+        <div id="methodologyReviewActions" class="methodology-review-actions" hidden></div>
+      </div>
+    </div>
+
+    <main class="workbench generator-panel" data-module="generator">
+      <div class="container">
+        <div class="two-columns tool-grid generator-workflow-grid">
+          <form id="generatorForm" class="column generator-form-panel editor-panel">
+            <div class="generator-panel-heading">
+              <h1>Входные параметры</h1>
+              <p class="s21-page-hint">Заполните поля или загрузите CSV с паспортом учебной программы.</p>
+            </div>
+
+            <section id="generationRunSnapshot" class="generation-run-snapshot" hidden aria-label="Параметры запуска">
+              <div class="generator-panel-heading compact">
+                <h2>Параметры запуска</h2>
+                <p class="s21-page-hint">Зафиксированы на момент старта · <span id="generationRunStartedAt">—</span></p>
+              </div>
+              <div class="generation-run-params-table">
+                <div><span>Учебный план</span><strong id="runParamCurriculum">—</strong></div>
+                <div><span>Направление</span><strong id="runParamDirection">—</strong></div>
+                <div><span>Тематический блок</span><strong id="runParamBlock">—</strong></div>
+                <div><span>Проект из УП</span><strong id="runParamProject">—</strong></div>
+                <div><span>Название</span><strong id="runParamTitle">—</strong></div>
+                <div><span>Тип</span><strong id="runParamType">—</strong></div>
+                <div><span>Кол-во задач</span><strong id="runParamTasks">—</strong></div>
+                <div><span>Методология</span><strong id="runParamMethodology">—</strong></div>
+              </div>
+              <div class="generation-run-note">
+                <strong>Не закрывайте страницу.</strong>
+                <span>Прогресс привязан к текущему запуску. Если запрос отменить, форма останется заполненной.</span>
+              </div>
+            </section>
+
+            <section class="generator-form-section">
+              <div class="generator-section-head">
+                <span class="generator-section-index">01</span>
+                <div><h2>Учебный план</h2><p>БД или CSV с паспортом программы</p></div>
+              </div>
+              <label class="form-group">
+                Учебный план из БД
+                <select id="planSelect"></select>
+              </label>
+              <div class="file-upload s21-accent-upload generator-upload-card" data-action="upload-curriculum">
+                <input type="file" id="curriculumFile" accept=".csv,text/csv" />
+                <span class="generator-upload-icon"></span>
+                <span>
+                  <strong id="curriculumUploadTitle">Загрузить CSV учебного плана</strong>
+                  <small id="curriculumFileName" class="s21-upload-status">Импорт создаст новый УП в общей БД</small>
+                </span>
+              </div>
+              <label class="toggle-field generator-toggle-card" for="methodologyHumanReview">
+                <input type="checkbox" id="methodologyHumanReview" />
+                <span><strong>Методологический режим</strong><small>Показывать контрольные точки, чат и действия методолога</small></span>
+              </label>
+            </section>
+
+            <section class="generator-form-section">
+              <div class="generator-section-head">
+                <span class="generator-section-index">02</span>
+                <div><h2>Контекст программы</h2></div>
+              </div>
+              <div class="generator-field-grid two">
+                <label class="form-group">
+                  Направление <span class="required">*</span>
+                  <select id="direction">
+                    <option value="BSA">Бизнес аналитика</option>
+                    <option value="Cb">Кибербезопасность</option>
+                    <option value="DO">DevOps</option>
+                    <option value="PjM">Проектный менеджмент</option>
+                    <option value="QA">Тестирование и обеспечение качества</option>
+                    <option value="DS">Машинное обучение</option>
+                    <option value="ADD">Добавить новый</option>
+                  </select>
+                </label>
+                <label class="form-group" id="curriculumBlockGroup">
+                  Тематический блок <span class="required">*</span>
+                  <select id="blockSelect"></select>
+                </label>
+              </div>
+              <input type="hidden" id="thematicBlock" value="BSA" />
+              <div class="expander generator-inline-expander" id="addBlockExpander" hidden>
+                <button class="expander-header" type="button" data-action="toggle-expander" data-target="addBlockExpander">
+                  <span>Добавить новое направление</span><span>▼</span>
+                </button>
+                <div class="expander-content">
+                  <div class="generator-field-grid two">
+                    <label class="form-group">Название направления<input type="text" id="newBlockName" placeholder="Например: Машинное обучение" /></label>
+                    <label class="form-group">Кодовое обозначение<input type="text" id="newBlockCode" placeholder="Например: ML" /></label>
+                  </div>
+                  <button class="btn btn-secondary" type="button" data-action="add-direction">Добавить направление</button>
+                </div>
+              </div>
+              <label class="form-group" id="curriculumProjectGroup">
+                Проект из УП <span class="required">*</span>
+                <select id="projectSelect"></select>
+                <small class="s21-field-hint">Подтянутся результаты обучения, навыки, инструменты и ПО по проекту.</small>
+              </label>
+            </section>
+
+            <section class="generator-form-section">
+              <div class="generator-section-head">
+                <span class="generator-section-index">03</span>
+                <div><h2>Параметры проекта</h2></div>
+              </div>
+              <div class="generator-field-grid two">
+                <label class="form-group">Тип проекта <span class="required">*</span>
+                  <select id="projectType">
+                    <option value="individual">Индивидуальный</option>
+                    <option value="group">Групповой</option>
+                  </select>
+                </label>
+                <label class="form-group" id="groupSizeGroup" hidden>Количество человек в группе
+                  <input type="number" id="groupSize" min="2" max="10" value="3" />
+                </label>
+                <label class="form-group">Уровень аудитории
+                  <select id="audienceLevel">
+                    <option value="beginner">Базовый</option>
+                    <option value="beginner_plus" selected>Базовый+</option>
+                    <option value="middle">Средний</option>
+                    <option value="advanced">Продвинутый</option>
+                    <option value="professional">Профессиональный</option>
+                  </select>
+                </label>
+                <label class="form-group">Профиль методологии
+                  <select id="profileSelect">
+                    <option value="_base">base</option>
+                    <option value="kids">kids</option>
+                    <option value="commerce">commerce</option>
+                  </select>
+                </label>
+              </div>
+              <label class="form-group">Тип программы
+                <input id="programType" type="text" placeholder="optional" />
+              </label>
+            </section>
+
+            <section class="generator-form-section">
+              <div class="generator-section-head">
+                <span class="generator-section-index">04</span>
+                <div><h2>Содержание</h2></div>
+              </div>
+              <label class="form-group">Название проекта<input type="text" id="titleSeed" placeholder="Название из УП или ручное название" /></label>
+              <label class="form-group">Краткое описание проекта <span class="required">*</span><textarea id="projectDescription" rows="4"></textarea></label>
+              <label class="form-group">Обязательные инструменты<input type="text" id="requiredTools" placeholder="Figma, Miro, Markdown" /></label>
+              <label class="form-group">Необходимое ПО<input type="text" id="requiredSoftware" placeholder="VS Code, Docker, PostgreSQL, браузер" /></label>
+              <label class="form-group storytelling-type-label" for="storytellingType">
+                Тип сторителлинга
+                <button class="storytelling-help-trigger" id="storytellingTypeHelpTrigger" type="button" aria-label="Пояснение типа сторителлинга">?</button>
+              </label>
+              <select id="storytellingType">
+                <option value="sjm" selected>Практический сторителлинг / SJM</option>
+                <option value="case">Рабочий кейс</option>
+                <option value="role_play">Ролевая ситуация</option>
+                <option value="project_scenario">Сценарий проекта</option>
+                <option value="story_arc">Сквозная история</option>
+                <option value="none">Без сторителлинга</option>
+              </select>
+              <label class="form-group">Сторителлинг / SJM<textarea id="storytelling" rows="4" placeholder="Кейс, роль, рабочая ситуация и ограничения проекта"></textarea></label>
+              <label class="form-group">Образовательные результаты<textarea id="learningOutcomes" rows="5" placeholder="По одному результату в строке"></textarea></label>
+              <label class="form-group">Получаемые навыки<textarea id="skills" rows="5" placeholder="По одному навыку в строке"></textarea></label>
+            </section>
+
+            <section class="generator-form-section expander open">
+              <button class="expander-header generator-section-head" type="button" data-action="toggle-expander" data-target="advancedExpander">
+                <span class="generator-section-index">05</span>
+                <span><strong>Дополнительные настройки</strong><small>Визуальные блоки, материалы и параметры репозитория</small></span>
+                <span class="generator-expander-icon">▼</span>
+              </button>
+              <div class="expander-content" id="advancedExpander">
+                <div class="generator-field-grid two">
+                  <label class="toggle-field generator-toggle-card" for="includeDiagrams"><input type="checkbox" id="includeDiagrams" checked /><span><strong>Mermaid-диаграммы</strong><small>Разрешить диаграммы в теории</small></span></label>
+                  <label class="toggle-field generator-toggle-card" for="includeTables"><input type="checkbox" id="includeTables" checked /><span><strong>Таблицы</strong><small>Разрешить таблицы в теории</small></span></label>
+                  <label class="toggle-field generator-toggle-card" for="includeFormulas"><input type="checkbox" id="includeFormulas" checked /><span><strong>Формулы</strong><small>Разрешить формулы в теории</small></span></label>
+                  <label class="toggle-field generator-toggle-card" for="generateBonus"><input type="checkbox" id="generateBonus" /><span><strong>Бонусное задание</strong><small>Добавить опциональный бонус</small></span></label>
+                </div>
+                <label class="form-group" id="bonusWishGroup" hidden>Дополнение к бонусному заданию<textarea id="bonusWish" rows="3"></textarea></label>
+                <div class="generator-subsection-title">Метаданные из УП</div>
+                <div class="generator-field-grid two">
+                  <label class="form-group">Название на платформе<input type="text" id="platformName" placeholder="Platform / GitLab name" /></label>
+                  <label class="form-group">Трудоемкость, часы<input type="number" id="workloadHours" min="0" step="0.5" /></label>
+                </div>
+                <label class="form-group">Опорные материалы<textarea id="additionalMaterials" rows="3" placeholder="Ссылки, выдержки, материалы из УП или reference-контекст"></textarea></label>
+                <div class="generator-field-grid two">
+                  <label class="form-group">Классификация проекта
+                    <select id="projectContentType">
+                      <option value="">Определить автоматически</option>
+                      <option value="hard_code">Технический: программирование</option>
+                      <option value="low_code">Технический: данные / QA / DevOps</option>
+                      <option value="no_code">Бизнес / гуманитарный / без кода</option>
+                    </select>
+                  </label>
+                  <label class="form-group">Базовый URL репозитория<input type="text" id="repoBaseUrl" placeholder="https://github.com/school21/project-name" /></label>
+                </div>
+                <label class="form-group">Шаблон пути в репозитории<input type="text" id="repoPathTemplate" value="repo/part-03/task-{num:02d}/README.md" /></label>
+              </div>
+            </section>
+
+            <div id="projectSummary" class="empty-inline">Загрузка учебных планов...</div>
+            <section id="recentGeneratorRuns" class="generation-run-snapshot recent-generator-runs" aria-label="Недавние запуски">
+              <div class="generator-panel-heading compact">
+                <h2>Недавние запуски</h2>
+                <p class="s21-page-hint">История текущей сессии генератора</p>
+              </div>
+              <div id="recentGeneratorRunItems" class="generation-run-params-table compact"></div>
+            </section>
+            <div class="generator-sticky-actions">
+              <button class="btn btn-secondary btn-soft" type="button" id="clearFormBtn">Очистить форму</button>
+              <button class="btn btn-primary btn-lg" type="submit" id="generateBtn"><span>Сгенерировать</span></button>
+              <button class="btn btn-danger btn-lg" type="button" id="cancelGenerationBtn" hidden><span>Аварийная остановка генерации</span></button>
+            </div>
+            <div id="generatorStatus" class="status-line"></div>
+          </form>
+
+          <section class="column generator-result-panel side-panel">
+            <h2 class="generator-result-title">Результаты генерации</h2>
+            <section id="generationRunView" class="generation-run-view" hidden aria-label="Прогресс генерации">
+              <div class="generation-run-head">
+                <div class="generation-run-ring" id="generationRunRing" style="--run-progress: 0%;"><span id="generationRunPercent">0%</span></div>
+                <div class="generation-run-title-block">
+                  <div class="generation-run-kicker">Этап <span id="generationRunStageIndex">1</span> из <span id="generationRunStageTotal">8</span></div>
+                  <h2 id="generationRunTitle">Инициализация пайплайна</h2>
+                  <p id="generationRunSubtitle">Подготавливаем контекст и проверяем входные параметры.</p>
+                </div>
+                <div class="generation-run-time"><span>Время</span><strong id="generationRunTimer">00:00</strong><small id="generationRunRemaining">осталось ~ 8–15 мин</small></div>
+              </div>
+              <div class="generation-pipeline-card"><ol id="generatorTimeline" class="generation-pipeline-list"></ol></div>
+              <div id="generationRunCheckpoint" class="generation-run-checkpoint" hidden><strong>Контрольная точка методолога.</strong><span id="generationRunCheckpointText">Пайплайн ожидает решения методолога.</span></div>
+              <details class="generation-run-log" open><summary><span></span> Лог пайплайна</summary><div id="generationRunLogContent">Запуск готовится...</div></details>
+              <div class="progress-track" aria-hidden="true"><div id="generatorProgress" class="progress-bar"></div></div>
+            </section>
+
+            <div id="methodologyReviewWorkspace" class="methodology-review-workspace methodology-review-actions" hidden></div>
+            <div id="noResults" class="generator-empty-state">
+              <div class="generator-empty-orbit"><span></span></div>
+              <h3>Результаты появятся здесь</h3>
+              <p>Заполните входные параметры слева и запустите генерацию. Полный пайплайн занимает 8–15 минут.</p>
+              <div class="generator-result-checklist">
+                <div><span>✓</span><strong>README.md</strong><small>теория, практика, критерии оценки</small></div>
+                <div><span>✓</span><strong>check-list.yml</strong><small>чек-лист p2p-проверки</small></div>
+                <div><span>✓</span><strong>План практики</strong><small>задачи, формулы, чек-листы, сложность</small></div>
+                <div><span>✓</span><strong>Метрики качества</strong><small>структура, gate, замечания</small></div>
+                <div><span>✓</span><strong>Артефакты</strong><small>датасеты, код, таблицы, формулы</small></div>
+              </div>
+            </div>
+
+            <div id="resultsArea" hidden>
+              <section id="generationResultSummary" class="s21-result-summary" aria-label="Сводка результата">
+                <article class="s21-summary-card s21-score-card"><div class="s21-score-ring" id="generationScoreRing"><span id="generationScorePercent">0%</span></div><div><div class="s21-summary-label">Оценка README</div><div class="s21-summary-value" id="generationScoreValue">—</div><div class="s21-summary-note" id="generationScoreMeta">Метрики появятся после проверки</div></div></article>
+                <article class="s21-summary-card"><div class="s21-summary-label">Слов</div><div class="s21-summary-value" id="generationWordsValue">—</div><div class="s21-summary-note">Объем итогового README</div></article>
+                <article class="s21-summary-card"><div class="s21-summary-label">Практика</div><div class="s21-summary-value" id="generationTasksValue">—</div><div class="s21-summary-note" id="generationTasksMeta">Задачи и бонус</div></article>
+                <article class="s21-summary-card"><div class="s21-summary-label">Артефакты</div><div class="s21-summary-value" id="generationAssetsValue">—</div><div class="s21-summary-note">Файлы и материалы</div></article>
+              </section>
+              <div id="warningsArea"></div>
+              <section class="s21-regeneration-panel result-regeneration-tools regen-only-action">
+                <div class="s21-panel-head"><div><h3>Перегенерация контента</h3><p>Опишите точечные изменения, если итоговый README нужно поправить.</p></div></div>
+                <label class="form-group">Комментарии по изменению README<textarea id="regenerationComments" rows="4" placeholder="Опишите, что нужно изменить в README..."></textarea></label>
+                <div class="s21-inline-actions end"><button class="btn btn-secondary btn-sm" type="button" id="insertRegenTemplateBtn">Вставить шаблон комментариев</button></div>
+                <div id="regenerationChanges" class="s21-warning-slot" hidden><label class="form-group">Что было изменено:<div id="regenerationChangesList" class="info-box s21-changes-list"></div></label></div>
+                <div class="btn-group">
+                  <button class="btn regen-only-action" type="button" id="regenerateBtn">Перегенерировать</button>
+                  <button class="btn btn-secondary regen-only-action" type="button" id="clearRegenerationBtn">Очистить перегенерацию</button>
+                  <button class="btn btn-secondary regen-only-action" type="button" id="fillFailedCriteriaBtn">Заполнить из непройденных критериев</button>
+                </div>
+              </section>
+
+              <section class="generation-final-card" aria-label="Результаты генерации">
+                <div class="generation-final-tabsbar">
+                  <div class="tabs result-tabs" role="tablist">
+                    <button class="tab active" type="button" data-tab-target="generatorReadme" aria-selected="true">Итоговый README</button>
+                    <button class="tab" type="button" data-tab-target="generatorPractice" aria-selected="false">Практика</button>
+                    <button class="tab" type="button" data-tab-target="generatorMetadata" aria-selected="false">Данные</button>
+                    <button class="tab" type="button" data-tab-target="generatorIssues" aria-selected="false">Метрики</button>
+                    <button class="tab" type="button" data-tab-target="generatorArtifacts" aria-selected="false">Отчёт</button>
+                    <button class="tab regen-only-action" type="button" data-tab-target="generatorRegen" aria-selected="false">Перегенерация</button>
+                  </div>
+                  <div class="result-view-actions" aria-label="Режим просмотра README">
+                    <button id="downloadArchiveBtn" type="button" class="btn btn-secondary btn-sm" disabled>Архив</button>
+                    <button id="readmeModeCompare" type="button" class="btn btn-secondary btn-sm">Сравнить</button>
+                    <div class="result-view-toggle">
+                      <button id="readmeModeMarkdown" type="button">Markdown</button>
+                      <button id="readmeModePreview" type="button" class="active">Превью</button>
+                    </div>
+                  </div>
+                </div>
+                <section id="generatorReadme" class="tab-content active" role="tabpanel"><div class="result-readme-layout"><aside id="readmeToc" class="readme-toc" aria-label="Содержание README"></aside><article id="generatorOutput" class="markdown-preview result-markdown output-preview"></article></div></section>
+                <section id="generatorPractice" class="tab-content" role="tabpanel" hidden><div class="result-panel-body"><h3>План практики</h3><div id="practicePlanDetails" class="info-box"></div><div class="divider"></div><h3>CriticAgent</h3><div id="practiceCriticIssues" class="info-box"></div></div></section>
+                <section id="generatorMetadata" class="tab-content" role="tabpanel" hidden><div class="result-panel-body"><h3>Сгенерированные данные</h3><div id="generatorMetadataView" class="generated-data-panel info-box"></div></div></section>
+                <section id="generatorIssues" class="tab-content" role="tabpanel" hidden><div class="result-panel-body metrics-result-body"><div id="generatorMetrics" class="metrics-grid"></div><div id="generatorIssuesView" class="issue-list"></div></div></section>
+                <section id="generatorArtifacts" class="tab-content" role="tabpanel" hidden><div class="result-panel-body"><div id="generatorArtifactsView"></div></div></section>
+                <section id="generatorRegen" class="tab-content" role="tabpanel" hidden><div class="result-panel-body"><details id="regenerationScopeDetails" class="s21-regeneration-panel regeneration-scope-panel"><summary class="regeneration-scope-summary"><span><strong>Части README для перегенерации</strong><small>Отметьте нужные части README и задайте инструкции.</small></span><span class="regeneration-scope-filter" aria-hidden="true"><span>Фильтр разделов</span><span class="regeneration-scope-filter-icon">›</span></span></summary><div class="regeneration-scope-body"><div id="regenerationSectionSelector" class="regeneration-section-selector"></div><label class="regeneration-global-comment">Общая правка<textarea id="regenerationGlobalComment" rows="4" placeholder="Глобальные инструкции по README или проекту..."></textarea><small>Правка будет объединена с выбранными частями README.</small></label><div id="regenerationSectionComments" class="regeneration-section-comments" aria-live="polite"></div></div></details><div class="divider"></div><div class="result-readme-layout regeneration-readme-layout"><aside id="regenToc" class="readme-toc" aria-label="Содержание перегенерированного README"></aside><div id="regenContent" class="markdown-preview result-markdown"></div></div></div></section>
+              </section>
+            </div>
+          </section>
+        </div>
+      </div>
     </main>
+
+    <aside id="methodologyAssistantChat" class="methodology-assistant-chat" hidden aria-label="Чат методолога">
+      <div class="assistant-chat-head"><div class="assistant-avatar">М</div><div><strong>Методолог-ассистент</strong><small id="assistantChatStatus">генерация активна</small></div><span id="assistantChatStage" class="assistant-stage-pill">ПАЙПЛАЙН</span><button type="button" id="assistantChatClose" class="assistant-chat-close" aria-label="Скрыть чат">×</button></div>
+      <div id="assistantChatMessages" class="assistant-chat-messages"><div class="assistant-message assistant"><span>М</span><div>Я буду держать контекст запуска. Пишите сюда замечания по ходу генерации; на контрольной точке смогу отправить их как правку методолога.</div></div></div>
+      <div id="assistantChatActions" class="assistant-chat-actions" hidden aria-label="Действия методолога"><button type="button" id="assistantActionContinue">Продолжить</button><button type="button" id="assistantActionEdit">Редактировать</button><button type="button" id="assistantActionAccept">Принять</button><button type="button" id="assistantActionCompare">Сравнить</button></div>
+      <div id="assistantTargetPicker" class="assistant-target-picker" hidden aria-label="Область правки"><div class="assistant-target-picker-head"><strong>К чему применить правку</strong><span>Выберите область и напишите правку в чат.</span></div><select id="assistantChangeTarget" class="assistant-target-select" aria-label="Выбранная область правки"><option value="">Текущий блок</option></select><div id="assistantTargetChips" class="assistant-target-chips" role="listbox" aria-label="Блоки для правки"></div></div>
+      <div class="assistant-chat-suggestions" aria-label="Быстрые команды"><button type="button" data-assistant-suggestion="Добавь больше коротких примеров в текущий раздел.">+ примеры</button><button type="button" data-assistant-suggestion="Упрости текущую практическую задачу и снизь порог входа.">упростить</button><button type="button" data-assistant-suggestion="Добавь промежуточный шаг с визуализацией результата.">добавить шаг</button><button type="button" data-assistant-suggestion="Исправь замечания по непройденным критериям без изменения структуры проекта.">по непройденным критериям</button></div>
+      <div class="assistant-chat-input-row"><textarea id="assistantChatInput" rows="1" placeholder="Комментарий методолога..."></textarea><button type="button" id="assistantChatSend" aria-label="Отправить комментарий">➤</button></div>
+    </aside>
+
     <script src="/static/shared/shell.js"></script>
     <script src="/static/shared/markdown.js"></script>
     <script src="/static/generator/panel.js"></script>

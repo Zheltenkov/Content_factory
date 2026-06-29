@@ -3,113 +3,586 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Справочник · Content Factory</title>
+    <meta name="application-name" content="Content Factory" />
+    <title>Справочник · Рабочий контур методолога</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=s21-legacy-design" />
   </head>
-  <body>
-    <main class="workbench reference-panel" data-module="reference">
-      <header class="workbench-header">
-        <a class="back-link" href="/">Content Factory</a>
-        <h1>Справочник</h1>
-        <div class="toolbar">
-          <input id="searchInput" class="toolbar-input" placeholder="Компетенция, skill, индикатор" />
-          <select id="reviewStatusFilter" aria-label="Статус review">
-            <option value="open">open</option>
-            <option value="all">all</option>
-            <option value="resolved">resolved</option>
-            <option value="ignored">ignored</option>
-          </select>
-          <label class="inline-check">
-            <input id="includeServiceProfiles" type="checkbox" />
-            service
-          </label>
-          <button id="searchButton" type="button">Искать</button>
+  <body class="methodologist-product page-reference">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="wordmark" href="/app">
+          <img class="wordmark-logo" src="/static/school21-sber-logo.jpg?v=1" alt="Школа 21" />
+          <span>
+            <span class="wordmark-name">Рабочий контур методолога</span>
+          </span>
+        </a>
+        <nav class="nav" aria-label="Основные разделы">
+          <a href="/app" class="nav-link">Главная</a>
+          <a href="/app/generate" class="nav-link">Генерация</a>
+          <a href="/app/check" class="nav-link">Аудитор</a>
+          <a href="/app/translate" class="nav-link">Перевод</a>
+          <a href="/up" class="nav-link" data-primary-route="curriculum">Учебный план</a>
+          <a href="/catalog-admin/groups" class="nav-link active" data-primary-route="catalog">Справочник</a>
+          <a href="/app/instruction" class="nav-link">Документация</a>
+        </nav>
+      </div>
+    </header>
+
+    <nav class="secondary-nav" aria-label="Разделы справочника">
+      <a href="/catalog-admin/groups" class="secondary-nav-link" data-reference-mode-link="skills">Skills и индикаторы</a>
+      <a href="/competencies" class="secondary-nav-link" data-reference-mode-link="competencies">Компетенции</a>
+      <a href="/catalog-admin/candidate-competencies" class="secondary-nav-link" data-reference-mode-link="candidates">Кандидатные компетенции</a>
+      <a href="/profiles" class="secondary-nav-link" data-reference-mode-link="profiles">Профили</a>
+      <a href="/catalog-admin/artifact-templates" class="secondary-nav-link" data-reference-mode-link="templates">Шаблоны УП</a>
+      <a href="/catalog-admin/archive" class="secondary-nav-link" data-reference-mode-link="archive">Архив</a>
+    </nav>
+
+    <main class="page-shell workbench" data-module="reference">
+      <aside class="summary-panel" aria-label="Сводка справочника">
+        <div class="summary-card">
+          <div class="summary-label">Профили</div>
+          <div class="summary-value" id="summaryProfiles">?</div>
         </div>
-      </header>
+        <div class="summary-card">
+          <div class="summary-label">Компетенции</div>
+          <div class="summary-value" id="summaryCompetencies">?</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Skills</div>
+          <div class="summary-value" id="summarySkills">?</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Индикаторы</div>
+          <div class="summary-value" id="summaryIndicators">?</div>
+        </div>
+        <div class="summary-card summary-card-warn">
+          <div class="summary-label">Open review</div>
+          <div class="summary-value" id="summaryOpenReviews">?</div>
+        </div>
+      </aside>
 
-      <section class="reference-grid">
-        <aside class="side-panel">
-          <div id="summaryCards" class="summary-grid" aria-label="Сводка справочника"></div>
-          <div class="tab-list" role="tablist" aria-label="Разделы справочника">
-            <button class="tab-button active" type="button" data-reference-mode="competencies">Компетенции</button>
-            <button class="tab-button" type="button" data-reference-mode="profiles">Профили</button>
-            <button class="tab-button" type="button" data-reference-mode="skills">Skills</button>
-            <button class="tab-button" type="button" data-reference-mode="reviews">Review</button>
+      <section class="content-panel reference-panel">
+        <section class="hero reference-hero">
+          <div>
+            <p class="eyebrow">Справочник</p>
+            <h1 id="referencePageTitle">Skills и индикаторы</h1>
+            <p id="referencePageSubtitle">Единый каталог поверх общей PostgreSQL-базы. Редактирование идет через `/reference/*`, без второго SQL-слоя.</p>
           </div>
-          <div id="competencyList" class="reference-list" aria-label="Компетенции"></div>
-          <div id="profileList" class="reference-list" aria-label="Профили" hidden></div>
-          <div id="skillList" class="reference-list" aria-label="Skills" hidden></div>
-          <div id="reviewList" class="reference-list" aria-label="Очередь проверки" hidden></div>
-        </aside>
+          <div class="hero-actions">
+            <a class="action-btn action-btn-light" id="intakePrimaryAction" href="/intake">Рабочий стол</a>
+            <a class="action-btn action-btn-secondary" href="/reviews">Review queue</a>
+          </div>
+        </section>
 
-        <section class="editor-panel reference-detail" aria-live="polite">
-          <section id="competencyDetailSection" class="reference-detail-section">
-            <form id="competencyForm">
-              <div class="form-row two">
-                <label>
-                  Название
-                  <input id="competencyTitle" required />
-                </label>
-                <label>
-                  Статус
-                  <select id="competencyStatus">
-                    <option value="active">active</option>
-                    <option value="candidate">candidate</option>
-                    <option value="deprecated">deprecated</option>
-                  </select>
+        <section id="referenceToolbar" class="toolbar-panel">
+          <div class="filter-form">
+            <input id="searchInput" class="toolbar-input" placeholder="Компетенция, skill, индикатор" />
+            <select id="reviewStatusFilter" aria-label="Статус review">
+              <option value="open">open</option>
+              <option value="all">all</option>
+              <option value="resolved">resolved</option>
+              <option value="ignored">ignored</option>
+            </select>
+            <select id="reviewSeverityFilter" aria-label="Severity review">
+              <option value="">severity: все</option>
+              <option value="info">info</option>
+              <option value="warning">warning</option>
+              <option value="critical">critical</option>
+            </select>
+            <select id="reviewEntityFilter" aria-label="Тип сущности review">
+              <option value="">entity: все</option>
+              <option value="competency">competency</option>
+              <option value="skill">skill</option>
+              <option value="indicator">indicator</option>
+            </select>
+            <select id="reviewReasonFilter" aria-label="Причина review">
+              <option value="">reason: все</option>
+              <option value="new_competency_candidate">new_competency_candidate</option>
+              <option value="candidate_reopened">candidate_reopened</option>
+              <option value="missing_indicator">missing_indicator</option>
+            </select>
+            <label class="inline-check">
+              <input id="includeServiceProfiles" type="checkbox" />
+              service
+            </label>
+            <button id="searchButton" type="button">Искать</button>
+          </div>
+        </section>
+
+        <section id="intakeWorkspace" class="intake-workspace" hidden>
+          <section id="intakeComposePanel" class="filter-panel">
+            <form id="intakeForm" class="admin-form intake-form">
+              <input type="hidden" id="briefFilePath" value="" />
+              <div class="brief-compose-grid">
+                <div class="brief-upload-panel">
+                  <label class="upload-dropzone" id="briefDropzone" for="briefFileInput" role="button" tabindex="0" aria-controls="briefFileInput">
+                    <span class="upload-dropzone-title">Загрузить документ</span>
+                    <span class="upload-dropzone-subtitle">Перетащите файл сюда или нажмите на область. Поддерживаются `.txt`, `.md`, `.csv`, `.docx`; после выбора обработка стартует автоматически.</span>
+                    <input class="brief-file-input-native" type="file" id="briefFileInput" accept=".txt,.md,.csv,.docx" aria-label="Выбрать документ для обработки" />
+                  </label>
+                  <div class="small muted" id="pickerStatus">Файл пока не выбран.</div>
+                </div>
+                <label class="brief-text-panel">
+                  <span>Бриф (свободный текст)</span>
+                  <textarea id="briefText" rows="13" placeholder="Например: подготовить junior backend-разработчика на Python для финтеха…"></textarea>
+                  <span class="small muted">Если вставите текст, появится кнопка для обработки текстового брифа.</span>
                 </label>
               </div>
-              <label>
-                Описание
-                <textarea id="competencyDescription" rows="4"></textarea>
-              </label>
-              <div class="form-actions">
-                <button type="submit">Сохранить компетенцию</button>
+              <div class="review-actions" id="briefSubmitWrap" hidden>
+                <button type="submit" class="action-btn action-btn-primary">Обработать текстовый бриф</button>
               </div>
             </form>
-            <div id="detailMeta" class="metrics"></div>
-            <div id="skillTree" class="reference-tree"></div>
           </section>
 
-          <section id="skillDetailSection" class="reference-detail-section" hidden>
-            <form id="skillForm">
-              <div class="form-row two">
-                <label>
-                  Canonical skill
-                  <input id="skillCanonicalName" required />
-                </label>
-                <label>
-                  Статус
-                  <select id="skillStatus">
-                    <option value="active">active</option>
-                    <option value="candidate">candidate</option>
-                    <option value="deprecated">deprecated</option>
-                  </select>
-                </label>
-              </div>
-              <label>
-                Тип skill
-                <input id="skillType" placeholder="unknown" />
-              </label>
-              <label>
-                Алиасы
-                <textarea id="skillAliases" rows="4" placeholder="Один alias на строку"></textarea>
-              </label>
-              <div class="form-actions">
-                <button id="newSkillButton" class="btn" type="button">Новый skill</button>
-                <button type="submit">Сохранить skill</button>
-              </div>
+          <details class="collapse-panel workspace-control-panel" open>
+            <summary>
+              <span class="workspace-control-summary-main">
+                <strong>Контроль брифа</strong>
+                <span class="status-badge" id="jobStatusBadge">draft</span>
+                <span class="workspace-control-summary-text" id="jobSummaryText">Следующий шаг: загрузить документ или вставить текст</span>
+                <span class="pill" id="jobBlockerCount" hidden>0 блокеров</span>
+              </span>
+              <span class="intake-progress-percent" id="jobProgressPercent">0%</span>
+            </summary>
+            <div class="workspace-control-body">
+              <section class="workspace-control-card workspace-control-progress">
+                <div class="workspace-control-card-head">
+                  <div>
+                    <div class="sub-label">Ход обработки</div>
+                    <h2 id="jobStage">Постановка в очередь</h2>
+                  </div>
+                  <span class="small muted" id="jobCreatedAt">локальный workspace</span>
+                </div>
+                <div class="small muted intake-run-source" id="jobSource">Источник: текстовый бриф</div>
+                <section class="intake-progress-card">
+                  <div class="intake-progress-head">
+                    <div class="small muted" id="jobProgress">Задача появится после запуска обработки брифа.</div>
+                  </div>
+                  <div class="intake-progress-track" aria-hidden="true">
+                    <div class="intake-progress-fill" id="jobProgressFill" style="width: 0%"></div>
+                  </div>
+                  <div class="intake-progress-steps" id="jobProgressSteps">
+                    <span class="intake-progress-step" data-stage="brief">brief</span>
+                    <span class="intake-progress-step" data-stage="catalog">catalog</span>
+                    <span class="intake-progress-step" data-stage="review">review</span>
+                    <span class="intake-progress-step" data-stage="dag">dag</span>
+                    <span class="intake-progress-step" data-stage="up">up</span>
+                  </div>
+                </section>
+              </section>
+
+              <section class="workspace-next-step workspace-control-card">
+                <div>
+                  <div class="sub-label">Следующий шаг</div>
+                  <h2 id="jobNextStepTitle">Обработать бриф</h2>
+                  <p class="small muted" id="jobNextStepDescription">Legacy маршрут `/intake` сохраняет переходы к review queue, справочнику, DAG и УП. Pipeline пишет результат в общий каталог и таблицы УП.</p>
+                </div>
+                <div class="review-actions" id="jobNextStepActions">
+                  <button id="nextIntakeStep" type="button" class="action-btn action-btn-primary">Выполнить следующий шаг</button>
+                  <a class="action-btn action-btn-secondary" href="/reviews">Открытые решения</a>
+                  <a class="action-btn action-btn-secondary" href="/catalog-admin/groups">Открыть справочник</a>
+                  <a class="action-btn action-btn-secondary" href="/up">Открыть УП</a>
+                </div>
+              </section>
+
+              <section class="workspace-control-card workspace-blockers" id="jobBlockersCard" hidden>
+                <div class="summary-head">
+                  <h2>Что блокирует УП</h2>
+                  <span class="pill" id="jobBlockersPill">0 блокеров</span>
+                </div>
+                <div class="workspace-blocker-grid" id="jobBlockers"></div>
+              </section>
+
+              <section class="workspace-control-card catalog-state-summary" id="jobCatalogStateCard" hidden>
+                <div class="summary-head">
+                  <h2>Состояние справочника</h2>
+                  <span class="pill">для DAG и УП</span>
+                </div>
+                <div class="chips-row compact-summary-row" id="jobCatalogState"></div>
+              </section>
+
+              <section class="workspace-control-card catalog-apply-summary" id="jobCreatedItemsCard" hidden>
+                <div class="summary-head">
+                  <h2>Что попало в справочник</h2>
+                  <span class="pill" id="jobCreatedItemsPill">0 записей</span>
+                </div>
+                <div class="catalog-summary-list" id="jobCreatedItems"></div>
+              </section>
+
+              <section class="workspace-control-card catalog-apply-summary" id="jobPipelineResultCard" hidden>
+                <div class="summary-head">
+                  <h2>Результат pipeline</h2>
+                  <span class="pill">brief → catalog → UP</span>
+                </div>
+                <div class="chips-row compact-summary-row" id="jobPipelineResult"></div>
+              </section>
+
+              <section class="workspace-control-card workflow-stepper" id="jobWorkflowSteps" aria-label="Маршрут брифа">
+              </section>
+
+              <section class="workspace-control-card workspace-history-card">
+                <div class="summary-head">
+                  <h2>Последние intake-задачи</h2>
+                  <span class="pill">история</span>
+                </div>
+                <div id="recentIntakeJobs" class="reference-list"></div>
+              </section>
+            </div>
+          </details>
+        </section>
+
+        <section id="referenceGrid" class="reference-grid methodologist-reference-grid">
+          <aside class="side-panel reference-list-panel">
+            <div id="summaryCards" class="summary-grid visually-hidden" aria-label="Сводка справочника"></div>
+            <div class="tab-list" role="tablist" aria-label="Разделы справочника">
+              <button class="tab-button active" type="button" data-reference-mode="skills">Skills</button>
+              <button class="tab-button" type="button" data-reference-mode="competencies">Компетенции</button>
+              <button class="tab-button" type="button" data-reference-mode="profiles">Профили</button>
+              <button class="tab-button" type="button" data-reference-mode="reviews">Review</button>
+              <button class="tab-button" type="button" data-reference-mode="candidates">Кандидаты</button>
+              <button class="tab-button" type="button" data-reference-mode="templates">Шаблоны</button>
+              <button class="tab-button" type="button" data-reference-mode="archive">Архив</button>
+            </div>
+            <form id="groupCreateForm" class="admin-form group-create-form">
+              <input id="groupCreateTitle" class="toolbar-input" placeholder="Новая группа компетенций" required />
+              <input id="groupCreateDescription" class="toolbar-input" placeholder="Описание (необязательно)" />
+              <button type="submit">Создать группу</button>
             </form>
-          </section>
+            <div id="groupList" class="reference-list" aria-label="Группы skills"></div>
+            <div id="skillList" class="reference-list" aria-label="Skills"></div>
+            <div id="competencyList" class="reference-list" aria-label="Компетенции" hidden></div>
+            <div id="profileList" class="reference-list" aria-label="Профили" hidden></div>
+            <div id="reviewList" class="reference-list" aria-label="Очередь проверки" hidden></div>
+            <div id="candidateList" class="reference-list" aria-label="Кандидатные компетенции" hidden></div>
+            <div id="templateList" class="reference-list" aria-label="Шаблоны УП" hidden></div>
+            <div id="archiveList" class="reference-list" aria-label="Архив" hidden></div>
+          </aside>
 
-          <section id="profileDetailSection" class="reference-detail-section" hidden>
-            <div id="profileDetail" class="reference-tree"></div>
-          </section>
+          <section class="editor-panel reference-detail" aria-live="polite">
+            <section id="competencyDetailSection" class="reference-detail-section" hidden>
+              <form id="competencyForm" class="admin-form">
+                <div class="form-grid-2">
+                  <label>
+                    Название
+                    <input id="competencyTitle" required />
+                  </label>
+                  <label>
+                    Статус
+                    <select id="competencyStatus">
+                      <option value="active">active</option>
+                      <option value="candidate">candidate</option>
+                      <option value="deprecated">deprecated</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  Описание
+                  <textarea id="competencyDescription" rows="4"></textarea>
+                </label>
+                <div class="form-actions">
+                  <button type="submit" class="action-btn action-btn-primary">Сохранить компетенцию</button>
+                </div>
+              </form>
+              <div id="detailMeta" class="metrics"></div>
+              <div id="skillTree" class="reference-tree"></div>
+            </section>
 
-          <div id="referenceStatus" class="status-line"></div>
+            <section id="skillDetailSection" class="reference-detail-section">
+              <form id="skillForm" class="admin-form">
+                <div class="form-grid-2">
+                  <label>
+                    Canonical skill
+                    <input id="skillCanonicalName" required />
+                  </label>
+                  <label>
+                    Статус
+                    <select id="skillStatus">
+                      <option value="active">active</option>
+                      <option value="candidate">candidate</option>
+                      <option value="deprecated">deprecated</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  Тип skill
+                  <input id="skillType" placeholder="unknown" />
+                </label>
+                <label>
+                  Алиасы
+                  <textarea id="skillAliases" rows="4" placeholder="Один alias на строку"></textarea>
+                </label>
+                <div class="form-actions">
+                  <button id="newSkillButton" class="action-btn action-btn-light" type="button">Новый skill</button>
+                  <button type="submit" class="action-btn action-btn-primary">Сохранить skill</button>
+                </div>
+              </form>
+              <section class="filter-panel skill-indicator-create">
+                <h2>Добавить индикатор</h2>
+                <form id="indicatorCreateForm" class="admin-form">
+                  <div class="form-grid-2">
+                    <label>
+                      Тип
+                      <select id="indicatorDimension">
+                        <option value="knowledge">Знает</option>
+                        <option value="ability">Умеет</option>
+                        <option value="proficiency">Владеет</option>
+                        <option value="unspecified">Не указано</option>
+                      </select>
+                    </label>
+                    <label>
+                      Notes
+                      <input id="indicatorNotes" value="reference-ui" />
+                    </label>
+                  </div>
+                  <label>
+                    Текст индикатора
+                    <textarea id="indicatorText" rows="3" placeholder="Что именно должен знать или уметь"></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button type="submit" class="action-btn action-btn-primary">Добавить индикатор</button>
+                  </div>
+                </form>
+              </section>
+              <section class="filter-panel">
+                <h2>Положение в структуре компетенций</h2>
+                <div id="skillLinks" class="reference-list compact"></div>
+              </section>
+              <section class="filter-panel">
+                <h2>Индикаторы</h2>
+                <div id="skillIndicators" class="reference-tree"></div>
+              </section>
+            </section>
+
+            <section id="groupDetailSection" class="reference-detail-section" hidden>
+              <form id="groupForm" class="admin-form">
+                <div class="form-grid-2">
+                  <label>
+                    Название группы
+                    <input id="groupTitle" required />
+                  </label>
+                  <label>
+                    Статус
+                    <select id="groupStatus">
+                      <option value="active">active</option>
+                      <option value="candidate">candidate</option>
+                      <option value="deprecated">deprecated</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  Описание
+                  <textarea id="groupDescription" rows="3"></textarea>
+                </label>
+                <div class="form-actions">
+                  <button type="submit" class="action-btn action-btn-primary">Сохранить группу</button>
+                </div>
+              </form>
+              <section class="filter-panel">
+                <h2>Добавить skill</h2>
+                <form id="groupSkillCreateForm" class="admin-form">
+                  <div class="form-grid-2">
+                    <label>
+                      Новый skill
+                      <input id="groupSkillName" placeholder="Название skill" />
+                    </label>
+                    <label>
+                      Тип skill
+                      <input id="groupSkillType" value="unknown" />
+                    </label>
+                  </div>
+                  <label>
+                    Алиасы
+                    <textarea id="groupSkillAliases" rows="3" placeholder="Один alias на строку"></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button type="submit" class="action-btn action-btn-primary">Добавить skill</button>
+                  </div>
+                </form>
+              </section>
+              <section class="filter-panel">
+                <div class="summary-head">
+                  <h2>Skills группы</h2>
+                  <span class="pill" id="groupSkillCount">0 skills</span>
+                </div>
+                <div id="groupSkillList" class="reference-list"></div>
+              </section>
+            </section>
+
+            <section id="candidateCompetencySection" class="reference-detail-section" hidden>
+              <div class="summary-head candidate-competency-section-head">
+                <div>
+                  <h2>Решения методолога</h2>
+                  <p class="small muted">Accept/reject, rename, merge и перенос skills работают поверх общего каталога.</p>
+                </div>
+                <span class="pill" id="candidateOpenCount">0 на проверке</span>
+              </div>
+              <div id="candidateCompetencyCards" class="candidate-competency-list"></div>
+            </section>
+
+            <section id="artifactTemplateSection" class="reference-detail-section" hidden>
+              <form id="artifactTemplateForm" class="admin-form">
+                <input id="artifactTemplateId" type="hidden" />
+                <div class="summary-head">
+                  <h2 id="artifactTemplateFormTitle">Новый шаблон</h2>
+                  <button id="artifactTemplateNewButton" type="button" class="action-btn action-btn-light">Создать новый</button>
+                </div>
+                <div class="admin-grid form-grid-2">
+                  <label>
+                    Код
+                    <input id="artifactTemplateCode" placeholder="customer-interview-report" />
+                  </label>
+                  <label>
+                    Название
+                    <input id="artifactTemplateTitle" required placeholder="Короткое имя шаблона" />
+                  </label>
+                </div>
+                <div class="form-grid-2">
+                  <label>
+                    Тип артефакта
+                    <select id="artifactTemplateFamily">
+                      <option value="analysis">analysis</option>
+                      <option value="document">document</option>
+                      <option value="configuration">configuration</option>
+                      <option value="design">design</option>
+                      <option value="production">production</option>
+                      <option value="practice">practice</option>
+                    </select>
+                  </label>
+                  <label>
+                    Статус
+                    <select id="artifactTemplateStatus">
+                      <option value="active">active</option>
+                      <option value="draft">draft</option>
+                      <option value="deprecated">deprecated</option>
+                    </select>
+                  </label>
+                  <label>
+                    Приоритет
+                    <input id="artifactTemplatePriority" type="number" value="100" />
+                  </label>
+                  <label>
+                    Вес scope
+                    <input id="artifactTemplateScopeWeight" type="number" step="0.1" value="1.0" />
+                  </label>
+                </div>
+                <label>
+                  Описание проверяемого артефакта
+                  <textarea id="artifactTemplateDescription" rows="3" placeholder="Проверяемый результат по теме {theme} на основе skills: {skills}"></textarea>
+                </label>
+                <label>
+                  Название проекта
+                  <textarea id="artifactTemplateProjectPattern" rows="2" placeholder="Практика по теме {theme}"></textarea>
+                </label>
+                <div class="form-grid-2">
+                  <label>
+                    Материалы и инструменты
+                    <textarea id="artifactTemplateMaterials" rows="4" placeholder="{skills}, {first_skill}, {theme}, {artifact}"></textarea>
+                  </label>
+                  <label>
+                    Сюжет / контекст задания
+                    <textarea id="artifactTemplateStorytelling" rows="4" placeholder="Ситуация, где студент применяет skills"></textarea>
+                  </label>
+                </div>
+                <label>
+                  Критерии проверки
+                  <textarea id="artifactTemplateCriteria" rows="3" placeholder="Наблюдаемые критерии качества результата"></textarea>
+                </label>
+                <div class="form-grid-2">
+                  <label>
+                    Область применения
+                    <select id="artifactTemplateScopeType">
+                      <option value="coverage_area">coverage_area</option>
+                      <option value="skill_group">skill_group</option>
+                      <option value="taxonomy_node">taxonomy_node</option>
+                      <option value="any">any</option>
+                    </select>
+                  </label>
+                  <label>
+                    Scope names
+                    <textarea id="artifactTemplateScopeNames" rows="3" placeholder="Одна область на строку. Для any можно оставить пустым."></textarea>
+                  </label>
+                </div>
+                <p class="muted">Доступные плейсхолдеры: <code>{theme}</code>, <code>{skills}</code>, <code>{first_skill}</code>, <code>{artifact}</code>, <code>{artifact_family}</code>.</p>
+                <div class="form-actions">
+                  <button type="submit" class="action-btn action-btn-primary">Сохранить шаблон</button>
+                </div>
+              </form>
+              <section class="filter-panel">
+                <div class="summary-head">
+                  <h2>Существующие шаблоны</h2>
+                  <span class="pill" id="artifactTemplateCount">0</span>
+                </div>
+                <div id="artifactTemplateTable" class="reference-list"></div>
+              </section>
+            </section>
+
+            <section id="archiveSection" class="reference-detail-section" hidden>
+              <section class="filter-panel">
+                <form id="archiveForm" class="filter-form">
+                  <label>
+                    <span>Поиск</span>
+                    <input id="archiveSearch" type="search" placeholder="Название группы, skill, текст индикатора" />
+                  </label>
+                  <label>
+                    <span>Раздел</span>
+                    <select id="archiveScope">
+                      <option value="all">Все</option>
+                      <option value="groups">Только группы</option>
+                      <option value="skills">Только skills</option>
+                      <option value="indicators">Только индикаторы</option>
+                    </select>
+                  </label>
+                  <button type="submit">Найти</button>
+                  <button type="button" class="action-btn action-btn-light" data-archive-reset>Сбросить</button>
+                </form>
+                <p class="muted">Из архива можно восстановить запись обратно в рабочий каталог. Для skills и индикаторов восстановление также включает родительские сущности, если они были скрыты.</p>
+                <p class="muted" id="archiveQueryLabel">Поиск по всему архиву</p>
+              </section>
+
+              <section class="archive-section" id="archiveGroupsBlock">
+                <div class="summary-head">
+                  <h2>Архивные группы</h2>
+                  <span class="pill" id="archivedGroupCount">0</span>
+                </div>
+                <div class="list-grid" id="archivedGroups"></div>
+              </section>
+
+              <section class="archive-section" id="archiveSkillsBlock">
+                <div class="summary-head">
+                  <h2>Архивные skills</h2>
+                  <span class="pill" id="archivedSkillCount">0</span>
+                </div>
+                <div class="list-grid" id="archivedSkills"></div>
+              </section>
+
+              <section class="archive-section" id="archiveIndicatorsBlock">
+                <div class="summary-head">
+                  <h2>Архивные индикаторы</h2>
+                  <span class="pill" id="archivedIndicatorCount">0</span>
+                </div>
+                <div class="list-grid" id="archivedIndicators"></div>
+              </section>
+            </section>
+
+            <section id="profileDetailSection" class="reference-detail-section" hidden>
+              <div id="profileDetail" class="reference-tree"></div>
+            </section>
+
+            <section id="referencePlaceholderSection" class="reference-detail-section" hidden>
+              <div class="entity-card parity-placeholder">
+                <h2 id="referencePlaceholderTitle">Раздел в переносе</h2>
+                <div id="referencePlaceholderText">Этот экран зафиксирован в parity-матрице. Кнопки не активируются, пока backend adapter не восстановлен.</div>
+              </div>
+            </section>
+
+            <div id="referenceStatus" class="status-line"></div>
+          </section>
         </section>
       </section>
     </main>
+
+    <script src="/static/shared/shell.js"></script>
     <script src="/static/reference/panel.js"></script>
   </body>
 </html>

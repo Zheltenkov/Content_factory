@@ -12,6 +12,34 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 
+def _dotenv_values(path: Path) -> dict[str, str]:
+    """Read simple KEY=VALUE pairs without adding a runtime dependency."""
+    if not path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip("\"'")
+    return values
+
+
+def _project_dotenv() -> Path:
+    override = os.getenv("CONTENT_FACTORY_ENV_FILE")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parents[3] / ".env"
+
+
+def _setting(name: str, dotenv: dict[str, str], default: str | None = None) -> str | None:
+    value = os.getenv(name)
+    if value is not None:
+        return value
+    return dotenv.get(name, default)
+
+
 class Settings(BaseModel):
     """Small env-based settings object without framework coupling."""
 
@@ -24,11 +52,12 @@ class Settings(BaseModel):
 
     @classmethod
     def from_env(cls) -> "Settings":
-        path = os.getenv("CONTENT_FACTORY_THRESHOLDS")
+        dotenv = _dotenv_values(_project_dotenv())
+        path = _setting("CONTENT_FACTORY_THRESHOLDS", dotenv)
         return cls(
-            app_name=os.getenv("APP_NAME", "content-factory"),
-            database_url=os.getenv("DATABASE_URL"),
-            environment=os.getenv("APP_ENV", "local"),
+            app_name=_setting("APP_NAME", dotenv, "content-factory") or "content-factory",
+            database_url=_setting("DATABASE_URL", dotenv),
+            environment=_setting("APP_ENV", dotenv, "local") or "local",
             thresholds_path=Path(path) if path else Path(__file__).with_name("thresholds.yaml"),
         )
 

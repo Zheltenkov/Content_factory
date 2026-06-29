@@ -26,7 +26,12 @@
     return event.target?.closest?.(".module-tile[data-panel]") || null;
   }
 
+  function shellRoot(root) {
+    return root && typeof root.querySelectorAll === "function" ? root : document;
+  }
+
   function bindDashboardTiles(root = document) {
+    root = shellRoot(root);
     if (!root || root.__contentFactoryDashboardBound) return;
     root.__contentFactoryDashboardBound = true;
 
@@ -50,6 +55,7 @@
   }
 
   function bindTabs(root = document) {
+    root = shellRoot(root);
     root.querySelectorAll?.("[data-tab-target]").forEach((tab) => {
       tab.addEventListener("click", () => {
         const targetId = tab.dataset.tabTarget;
@@ -73,14 +79,66 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    bindDashboardTiles(document);
-    bindTabs(document);
-  });
+  const MODULE_NAV = [
+    ["", "Главная", "/app"],
+    ["generator", "Генерация", "/app/generate"],
+    ["checker", "Аудитор", "/app/check"],
+    ["translator", "Перевод", "/app/translate"],
+    ["curriculum", "Учебный план", "/up"],
+    ["reference", "Справочник", "/catalog-admin/groups"],
+    ["instruction", "Документация", "/app/instruction"],
+  ];
+
+  function injectTopbar(root = document) {
+    root = shellRoot(root);
+    if (root.body?.classList.contains("methodologist-product")) return;
+    const workbench = root.querySelector?.("main.workbench[data-module]");
+    if (!workbench || root.querySelector?.(".dashboard-header--menu")) return;
+    const current = workbench.dataset.module || "";
+    const header = root.createElement("header");
+    header.className = "hdr dashboard-header--menu";
+    const brand = root.createElement("a");
+    brand.className = "hdr-brand";
+    brand.href = "/app";
+    brand.setAttribute("aria-label", "Главная");
+    brand.innerHTML = '<span class="hdr-mark">21</span><span class="hdr-title"><b>Генератор</b><span>учебных проектов · v 2.4</span></span>';
+    const nav = root.createElement("nav");
+    nav.className = "hdr-nav dashboard-nav";
+    nav.setAttribute("aria-label", "Основные разделы");
+    MODULE_NAV.forEach(([id, label, href]) => {
+      const link = root.createElement("a");
+      link.href = href;
+      link.textContent = label;
+      if (id === current) link.className = "active";
+      nav.appendChild(link);
+    });
+    const spacer = root.createElement("div");
+    spacer.className = "hdr-spacer";
+    const actions = root.createElement("div");
+    actions.className = "hdr-right dashboard-header-actions";
+    actions.innerHTML = '<span class="hdr-lang"><span class="on">RU</span><span>EN</span></span><span class="hdr-user dashboard-user"><span class="av dashboard-user-avatar">МК</span><span>М. Кравцова</span></span>';
+    header.append(brand, nav, spacer, actions);
+    workbench.before(header);
+  }
+
+  function init(root = document) {
+    root = shellRoot(root);
+    injectTopbar(root);
+    bindDashboardTiles(root);
+    bindTabs(root);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init(document);
+  }
 
   window.ContentFactoryShell = {
     bindDashboardTiles,
     bindTabs,
+    init,
+    injectTopbar,
     navigateToPanel,
     panelUrl,
     safePanelPath,

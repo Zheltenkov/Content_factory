@@ -347,7 +347,7 @@ class TranslatorService:
             job.phase = "parse_transcript"
             segments = parse_transcript(content, transcript_text=transcript_text)
             job.original_transcript = json.dumps(segments, ensure_ascii=False)
-            translated = self._translate_segments(segments, target_language, self._client(llm_provider))
+            translated = segments if target_language == "ru" else self._translate_segments(segments, target_language, self._client(llm_provider))
             job.phase = "build_subtitles"
             self._attach_subtitle_artifacts(job, translated, subtitle_style)
             if output_mode in {"burned_video", "both"}:
@@ -385,7 +385,7 @@ class TranslatorService:
                 markdown,
                 target_language,
                 translation_mode=translation_mode,
-                client=self._client(llm_provider),
+                client=None if target_language == "ru" else self._client(llm_provider),
                 progress_callback=lambda phase: setattr(job, "phase", phase),
             )
             job.status = "completed"

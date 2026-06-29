@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Инструкция · Content Factory</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=s21-legacy-design" />
+  </head>
+  <body class="s21-product page-instruction">
+    <header class="hdr dashboard-header--menu instruction-topbar">
+      <a class="hdr-brand" href="/app" aria-label="Главная">
+        <span class="hdr-mark">21</span>
+        <span class="hdr-title">
+          <b>Генератор</b>
+          <span>учебных проектов · v 2.4</span>
+        </span>
+      </a>
+      <nav class="hdr-nav dashboard-nav" aria-label="Основные разделы">
+        <a href="/app">Главная</a>
+        <a href="/app/generate">Генерация</a>
+        <a href="/app/check">Проверка</a>
+        <a href="/app/translate">Перевод</a>
+        <a href="/app/instruction" class="active">Документация</a>
+      </nav>
+      <div class="hdr-spacer"></div>
+      <div class="hdr-right dashboard-header-actions">
+        <span class="hdr-lang"><span class="on">RU</span><span>EN</span></span>
+        <button class="hdr-user dashboard-user" type="button" title="Профиль">
+          <span class="av dashboard-user-avatar" id="instructionUserInitials">МК</span>
+          <span id="instructionUserName">М. Кравцова</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="instruction-shell">
+      <section class="instruction-hero" aria-labelledby="instructionTitle">
+        <div>
+          <p class="instruction-kicker">Инструкция</p>
+          <h1 id="instructionTitle">Как работать с генератором</h1>
+          <p>Порядок работы методолога: подготовить контекст, запустить генерацию, проверить результат, внести точечные правки и скачать итоговый архив.</p>
+        </div>
+        <aside class="instruction-note" aria-label="Главный принцип">
+          <strong>Главный принцип</strong>
+          <span>Правки формулируются как замечания к тексту: что исправить, как должно стать и что не трогать.</span>
+        </aside>
+      </section>
+
+      <section class="instruction-layout" aria-label="Порядок работы">
+        <aside class="instruction-rail" aria-label="Быстрый порядок">
+          <h2>Порядок</h2>
+          <ol>
+            <li>Заполнить параметры</li>
+            <li>Запустить генерацию</li>
+            <li>Проверить этапы</li>
+            <li>Внести правки</li>
+            <li>Проверить README</li>
+            <li>Перевести документ</li>
+            <li>Скачать результат</li>
+          </ol>
+        </aside>
+
+        <div class="instruction-content">
+          <section class="instruction-section">
+            <div class="instruction-section-head"><span class="instruction-step">01</span><h2>Перед запуском</h2></div>
+            <div class="instruction-card-grid">
+              <article class="instruction-card"><h3>Проверьте выбранный проект</h3><p>После загрузки УП убедитесь, что выбран нужный проект, а название, описание, результаты обучения и навыки относятся именно к нему.</p></article>
+              <article class="instruction-card"><h3>Заполните смысловой контекст</h3><p>В описании проекта пишите, что студент делает и какой рабочий результат получает. В сторителлинге задайте роль, ситуацию и ограничения.</p></article>
+              <article class="instruction-card"><h3>Выберите режим</h3><p>Обычный режим ведет к итоговому результату. Методологический режим останавливается на контрольных точках.</p></article>
+            </div>
+          </section>
+
+          <section class="instruction-section">
+            <div class="instruction-section-head"><span class="instruction-step">02</span><h2>Параметры</h2></div>
+            <div class="instruction-param-list">
+              <article><strong>Направление и блок</strong><p>Определяют словарь, соседний учебный контекст и ожидания к проекту.</p></article>
+              <article><strong>Тип проекта и группа</strong><p>Влияют на формулировки задач и распределение ролей.</p></article>
+              <article><strong>Уровень аудитории</strong><p>Задает глубину объяснений и степень самостоятельности студента.</p></article>
+              <article><strong>Сторителлинг / SJM</strong><p>Главная подсказка для практической части: ситуация, роль, ограничения и артефакты.</p></article>
+              <article><strong>Таблицы, формулы, диаграммы</strong><p>Включаются только там, где они помогают понять материал.</p></article>
+              <article><strong>Бонус</strong><p>Дополнительный вызов для сильных студентов, не замена основным задачам.</p></article>
+            </div>
+          </section>
+
+          <section class="instruction-section">
+            <div class="instruction-section-head"><span class="instruction-step">03</span><h2>Проверка и правки</h2></div>
+            <div class="instruction-wide-card">
+              <ul class="instruction-check-list">
+                <li>В итоговом README проверьте аннотацию, введение, теорию, практику, критерии и заключение.</li>
+                <li>Во вкладке «Данные» смотрите задачи, артефакты и материалы.</li>
+                <li>Во вкладке «Метрики» используйте непройденные критерии как список точечных правок.</li>
+                <li>Не запускайте весь проект заново, если достаточно scoped regeneration.</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/shared/shell.js"></script>
+  </body>
+</html>

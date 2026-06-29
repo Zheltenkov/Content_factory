@@ -1,5 +1,9 @@
 # W6 reference + UI parity backlog
 
+Detailed legacy UI surface is tracked in `docs/UI_LEGACY_PARITY_AUDIT.md`. Treat that file as the acceptance
+matrix for pages, transitions, controls, states, and backend links. This backlog only defines implementation
+slices; it is not sufficient by itself for "last button/setting" parity.
+
 ## Scope rules
 
 - Curriculum panel is already implemented by T2.6/T2.7/T2.8. W6 builds or upgrades **4 panels**: reference,
@@ -13,9 +17,10 @@
 
 ## Current State
 
-- Done: R1 reference backend + basic shell (`app/modules/reference`, dashboard `ui_panel` navigation).
-- Done: curriculum panel from T2.6.
-- Open: U1-U7 UI parity, translator real backend, richer generator/checker panels.
+- Done: R1 reference backend over shared repo; R3-R7 reference admin parity screens are wired through `/reference/*`.
+- Done: U1-U7 UI parity path. `tests/test_ui_final_e2e.py` verifies 5/5 dashboard tiles, real panel routes,
+  curriculum edit/export, generator from DB УП, checker evaluation, reference edit/review, and translator readme/document/video.
+- Done: curriculum panel from T2.6/T2.7/T2.8 participates in U7 e2e.
 - In current `main`, G5 and C1-C4 code exist. Treat them as parity/e2e verification targets, not as absent modules.
 
 ## R1 — reference service over shared repo

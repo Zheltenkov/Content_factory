@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import io
+import zipfile
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -67,6 +70,61 @@ def test_generator_e2e_uses_curriculum_plan_from_db() -> None:
     assert payload["document"]["artifacts"]
     assert payload["rubric_json"]["passed"] is True
     assert payload["gate_review"]["human_review_required"] is False
+
+
+def test_generator_async_run_polling_review_and_archive() -> None:
+    repo = _repo()
+    plan = UPSkeleton(
+        status="built",
+        title="Backend curriculum",
+        direction="Backend",
+        rows=[_project(1, "REST API", block="API", platform_name="BE01_REST")],
+    )
+    app = create_app()
+    app.dependency_overrides[get_curriculum_repo] = lambda: repo
+    app.dependency_overrides[get_generator_repo] = lambda: repo
+    client = TestClient(app)
+
+    created = client.post("/curriculum/plans", json={"plan": plan.model_dump(mode="json"), "author_ref": "generator-async"})
+    assert created.status_code == 201, created.text
+    plan_id = created.json()["plan_id"]
+
+    started = client.post(
+        "/generator/runs/from-curriculum/async",
+        json={"plan_id": plan_id, "project_order": 1, "overrides": {"methodology_human_review": True}},
+    )
+    assert started.status_code == 200, started.text
+    run_id = started.json()["run_id"]
+
+    status_payload = client.get(f"/generator/runs/{run_id}/status").json()
+    assert status_payload["status"] in {"completed", "needs_review"}
+    assert status_payload["result"]["document"]["metadata"]["source"] == "curriculum_db"
+    assert status_payload["workflow"]["run_id"] == run_id
+
+    recent = client.get("/generator/runs/recent")
+    assert recent.status_code == 200
+    assert recent.json()["items"][0]["run_id"] == run_id
+
+    change = client.post(
+        f"/generator/runs/{run_id}/review/request-changes",
+        json={"target_stage": "final", "instruction": "Добавь явное предупреждение о проверке окружения."},
+    )
+    assert change.status_code == 200, change.text
+    assert change.json()["methodology"]["pending_change_ids"]
+
+    preview = client.post(f"/generator/runs/{run_id}/review/preview-changes", json={})
+    assert preview.status_code == 200, preview.text
+    assert "Методологические правки" in preview.json()["methodology"]["preview_markdown"]
+
+    approved = client.post(f"/generator/runs/{run_id}/review/approve-diff", json={"comment": "ok"})
+    assert approved.status_code == 200, approved.text
+    assert "Методологические правки" in approved.json()["result"]["document"]["markdown"]
+
+    archive = client.get(f"/generator/runs/{run_id}/archive")
+    assert archive.status_code == 200, archive.text
+    with zipfile.ZipFile(io.BytesIO(archive.content)) as bundle:
+        assert {"README.md", "rubric.json", "report.json"}.issubset(set(bundle.namelist()))
+        assert "REST API" in bundle.read("README.md").decode("utf-8")
 
 
 def _repo() -> CurriculumCatalogRepo:

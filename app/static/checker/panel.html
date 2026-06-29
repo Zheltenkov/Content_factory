@@ -5,31 +5,229 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Проверка · Content Factory</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=s21-legacy-design" />
   </head>
-  <body>
+  <body class="s21-product page-check">
+    <header class="hdr dashboard-header--menu">
+      <a class="hdr-brand" href="/app" aria-label="Главная">
+        <span class="hdr-mark">21</span>
+        <span class="hdr-title">
+          <b>Генератор</b>
+          <span>учебных проектов · v 2.4</span>
+        </span>
+      </a>
+      <nav class="hdr-nav dashboard-nav" aria-label="Основные разделы">
+        <a href="/app">Главная</a>
+        <a href="/app/generate">Генерация</a>
+        <a class="active" href="/app/check">Проверка</a>
+        <a href="/app/translate">Перевод</a>
+        <a href="/app/instruction">Документация</a>
+      </nav>
+      <div class="hdr-spacer"></div>
+      <div class="hdr-right dashboard-header-actions" aria-label="Состояние">
+        <span class="hdr-lang"><span class="on">RU</span><span>EN</span></span>
+        <span class="hdr-user dashboard-user"><span class="av dashboard-user-avatar">МК</span><span>М. Кравцова</span></span>
+      </div>
+    </header>
     <main class="workbench checker-panel" data-module="checker">
       <header class="workbench-header">
-        <a class="back-link" href="/">Content Factory</a>
+        <a class="back-link" href="/app">← Главное меню</a>
         <h1>Проверка</h1>
+        <nav class="toolbar" aria-label="Действия проверки">
+          <button id="checkerClearBtn" class="btn" type="button">Очистить результат</button>
+          <button id="checkerImproveTopBtn" class="btn btn-primary" type="button" disabled>Улучшить README</button>
+        </nav>
       </header>
       <section class="tool-grid">
         <form id="checkerForm" class="editor-panel">
-          <label>
-            README markdown
-            <textarea id="markdownInput" rows="18" required></textarea>
+          <h2>README</h2>
+          <label class="file-button">
+            <input id="readmeFile" type="file" accept=".md,.markdown,.txt" />
+            <span id="checkerReadmeUploadTitle">Загрузить README.md</span>
           </label>
-          <button type="submit">Проверить</button>
+          <div class="inline-actions">
+            <span id="readmeFileNameChecker" class="empty-inline">Markdown-файл для проверки</span>
+            <button id="checkerRemoveFileBtn" type="button">×</button>
+          </div>
+          <label>README markdown</label>
+          <textarea id="markdownInput" rows="14" required></textarea>
+
+          <details class="generated-data-preview">
+            <summary>Образовательные результаты</summary>
+            <textarea id="learningOutcomes" rows="4" placeholder="По одному результату на строку"></textarea>
+          </details>
+
+          <details class="generated-data-preview">
+            <summary>Учебный план для улучшения</summary>
+            <p class="empty-inline">CSV можно приложить как контекст; улучшение всё равно работает по README.</p>
+            <input id="checkerCurriculumFile" type="file" accept=".csv" />
+            <span id="checkerCurriculumFileName" class="empty-inline">Для точного контекста улучшения</span>
+            <select id="checkerCurriculumBlock">
+              <option value="">— Тематический блок —</option>
+            </select>
+            <select id="checkerCurriculumProject">
+              <option value="">— Проект в блоке —</option>
+            </select>
+          </details>
+
+          <div class="form-actions">
+            <button type="submit">✓ Проверить README</button>
+            <button id="checkerReportOnlyBtn" type="button">Только отчёт</button>
+          </div>
           <div id="checkerStatus" class="status-line"></div>
         </form>
         <section class="editor-panel">
-          <h2>Preview</h2>
-          <article id="checkerPreview" class="markdown-preview output-preview"></article>
-          <h2>Result</h2>
-          <div id="checkerSummary" class="metrics"></div>
-          <pre id="checkerOutput" class="output-preview"></pre>
+          <section id="checkerScorePanel" class="summary-card">
+            <div class="metrics">
+              <div id="checkerScoreRing" class="s21-score-ring"><span id="checkerScorePercent">—</span></div>
+              <span id="checkerThresholdBadge" class="badge">ОЦЕНКА README</span>
+              <span id="checkerScoreValue">—</span>
+              <span id="checkerScoreStatus">Загрузите README для оценки</span>
+            </div>
+            <div id="improveReadmeWarning" class="empty-inline" hidden>Найдены дефекты. Рекомендуется улучшить README.</div>
+          </section>
+
+          <div id="warningsArea" class="issue-list"></div>
+
+          <section id="improvementGenerationProgress" class="side-panel" hidden>
+            <h2>Генерация улучшенного README...</h2>
+            <div class="progress-track"><div id="checkerRunProgress" class="progress-bar"></div></div>
+            <div class="metrics">
+              <span>Время: <strong id="improvementTimer">00:00</strong></span>
+              <span>Этап: <strong id="improvementCurrentAgent">Инициализация</strong></span>
+            </div>
+          </section>
+
+          <div class="tab-list checker-result-tabs" role="tablist" aria-label="Результаты проверки">
+            <button class="tab-button active" type="button" data-tab-target="checkerCriteriaTab" aria-selected="true">Критерии <span class="count">39</span></button>
+            <button class="tab-button" type="button" data-tab-target="checkerStatsTab" aria-selected="false">Статистика текста</button>
+            <button class="tab-button" type="button" data-tab-target="checkerSourceTab" aria-selected="false">Исходный README</button>
+            <button id="improvedReadmeTab" class="tab-button" type="button" data-tab-target="checkerImprovedTab" aria-selected="false" hidden>Улучшенный README beta</button>
+            <button id="checkerDiffTab" class="tab-button" type="button" data-tab-target="checkerDiffTabPanel" aria-selected="false" hidden>Сравнение</button>
+          </div>
+
+          <section id="checkerCriteriaTab" class="tab-content active" role="tabpanel">
+            <div id="checkerMetricsVersionSwitcher" class="tab-list" hidden>
+              <button id="checkerMetricsTabOriginal" class="tab-button active" type="button">Исходный README</button>
+              <button id="checkerMetricsTabImproved" class="tab-button" type="button">Улучшенный README</button>
+            </div>
+            <div id="checkerMetricsOriginal" class="report-version-content"></div>
+            <div id="checkerMetricsImproved" class="report-version-content" hidden></div>
+            <div id="checkerSummary" class="metrics"></div>
+            <pre id="checkerOutput" class="output-preview"></pre>
+          </section>
+          <section id="checkerStatsTab" class="tab-content" role="tabpanel" hidden>
+            <div id="checkerTextStats" class="metrics-grid"></div>
+          </section>
+          <section id="checkerSourceTab" class="tab-content" role="tabpanel" hidden>
+            <article id="checkerPreview" class="markdown-preview output-preview"></article>
+          </section>
+          <section id="checkerImprovedTab" class="tab-content" role="tabpanel" hidden>
+            <article id="improvedReadmePreview" class="markdown-preview output-preview"></article>
+            <div class="form-actions">
+              <button id="downloadImprovedReadmeBtn" type="button">Скачать улучшенный README</button>
+            </div>
+          </section>
+          <section id="checkerDiffTabPanel" class="tab-content" role="tabpanel" hidden>
+            <div id="checkerDiffStats" class="metrics-grid"></div>
+            <div class="inline-actions">
+              <button id="showAllDiffBtn" type="button">Весь документ</button>
+              <button id="showChangedDiffBtn" type="button">Только изменения</button>
+              <button id="prevDiffBtn" type="button">Предыдущее</button>
+              <button id="nextDiffBtn" type="button">Следующее</button>
+            </div>
+            <div id="checkerDiffTable" class="reference-list compact"></div>
+            <pre id="checkerDiffOutput" class="output-preview"></pre>
+          </section>
         </section>
       </section>
+
+      <section id="checkerImprovementRunView" class="editor-panel" hidden>
+        <div class="metrics">
+          <div id="checkerRunRing" class="generation-run-ring"><span id="checkerRunPercent">0%</span></div>
+          <span id="checkerRunStageIndex" class="badge">01 из 06</span>
+          <strong id="checkerRunTitle">Генерация улучшенного README</strong>
+          <span id="checkerRunTimer">00:00</span>
+          <span id="checkerRunRemaining">осталось ~ 1 мин</span>
+        </div>
+        <ol id="checkerRunTimeline" class="s21-run-timeline">
+          <li class="timeline-row now"><span class="timeline-dot">01</span><strong>Анализ README</strong><span class="timeline-time">в работе</span></li>
+          <li class="timeline-row"><span class="timeline-dot">02</span><strong>Извлечение параметров</strong><span class="timeline-time">ожидает</span></li>
+          <li class="timeline-row"><span class="timeline-dot">03</span><strong>Достройка структуры</strong><span class="timeline-time">ожидает</span></li>
+          <li class="timeline-row"><span class="timeline-dot">04</span><strong>Проверка качества</strong><span class="timeline-time">ожидает</span></li>
+          <li class="timeline-row"><span class="timeline-dot">05</span><strong>Сборка diff</strong><span class="timeline-time">ожидает</span></li>
+          <li class="timeline-row"><span class="timeline-dot">06</span><strong>Готово</strong><span class="timeline-time">ожидает</span></li>
+        </ol>
+      </section>
+
+      <section id="improvementModal" class="editor-panel checker-improvement-modal" hidden>
+        <div class="inline-actions">
+          <h2>Улучшение README</h2>
+          <button id="closeImprovementModalBtn" type="button">×</button>
+        </div>
+        <div id="improvementLoading" class="empty-inline" hidden>Извлечение данных из README...</div>
+        <form id="improvementForm" class="tool-grid">
+          <div class="checker-improvement-stepper metrics">
+            <span class="badge success">1 Основное</span>
+            <span class="badge">2 Параметры проекта</span>
+            <span class="badge">3 Результаты и навыки</span>
+            <span class="badge">4 Бонус и репозиторий</span>
+          </div>
+          <label>Название проекта *<input id="improveTitleSeed" required /></label>
+          <label>Язык *
+            <select id="improveLanguage" required>
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+              <option value="kg">Кыргызча</option>
+              <option value="uz">O'zbek</option>
+            </select>
+          </label>
+          <label>Описание проекта *<textarea id="improveDescription" rows="3" required></textarea></label>
+          <label>Тематический блок *
+            <select id="improveThematicBlock" required>
+              <option value="">Выберите тематический блок</option>
+              <option value="BE">Backend</option>
+              <option value="DO">DevOps</option>
+              <option value="QA">Тестирование и обеспечение качества</option>
+              <option value="DS">Машинное обучение</option>
+              <option value="GEN">Общий учебный проект</option>
+              <option value="ADD">Добавить новый</option>
+            </select>
+          </label>
+          <details id="improveAddBlockExpander" class="generated-data-preview" hidden>
+            <summary>Добавить новый тематический блок</summary>
+            <label>Название тематического блока<input id="improveNewBlockName" placeholder="Например: Машинное обучение" /></label>
+            <label>Кодовое обозначение<input id="improveNewBlockCode" placeholder="Например: ML" /></label>
+            <button id="addImproveBlockBtn" type="button">Добавить тематический блок</button>
+          </details>
+          <label>Уровень аудитории *<input id="improveAudienceLevel" required /></label>
+          <label>Тип проекта
+            <select id="improveProjectType">
+              <option value="individual">Индивидуальный</option>
+              <option value="group">Групповой</option>
+            </select>
+          </label>
+          <label id="improveGroupSizeGroup">Количество человек<input id="improveGroupSize" type="number" min="2" max="10" value="2" /></label>
+          <label>Количество задач<input id="improveTasksCount" type="number" min="2" max="8" /></label>
+          <label>Образовательные результаты<textarea id="improveLearningOutcomes" rows="4"></textarea></label>
+          <label>Навыки<input id="improveSkills" /></label>
+          <label>Инструменты<input id="improveRequiredTools" /></label>
+          <label>Дополнительный учебный контекст<textarea id="improveZUN" rows="4"></textarea></label>
+          <label class="inline-actions"><input id="improveMethodologyHumanReview" type="checkbox" /> Методологический режим</label>
+          <label class="inline-actions"><input id="improveGenerateBonus" type="checkbox" /> Генерировать бонусное задание</label>
+          <label id="improveBonusWishGroup" hidden>Дополнение к бонусу<textarea id="improveBonusWish" rows="2"></textarea></label>
+          <label>Базовый URL репозитория<input id="improveRepoBaseUrl" /></label>
+          <label>Шаблон пути<input id="improveRepoPathTemplate" value="repo/part-03/task-{num:02d}/README.md" /></label>
+          <div id="improvementWarnings" class="empty-inline"></div>
+          <div class="form-actions">
+            <span class="badge">Шаг 1 из 4</span>
+            <button id="cancelImprovementBtn" type="button">Отмена</button>
+            <button type="submit">Далее →</button>
+          </div>
+        </form>
+      </section>
     </main>
+    <script src="/static/shared/shell.js"></script>
     <script src="/static/shared/markdown.js"></script>
     <script src="/static/checker/panel.js"></script>
   </body>

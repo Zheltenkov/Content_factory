@@ -5,14 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Content Factory</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=s21-legacy-design" />
   </head>
-  <body>
+  <body class="s21-product page-menu">
+    <header class="hdr dashboard-header--menu">
+      <a class="hdr-brand" href="/app" aria-label="Главная">
+        <span class="hdr-mark">21</span>
+        <span class="hdr-title">
+          <b>Генератор</b>
+          <span>учебных проектов · v 2.4</span>
+        </span>
+      </a>
+      <nav class="hdr-nav dashboard-nav" aria-label="Основные разделы">
+        <a href="/app" class="active">Главная</a>
+        <a href="/app/generate">Генерация</a>
+        <a href="/app/check">Аудитор</a>
+        <a href="/app/translate">Перевод</a>
+        <a href="/up">Учебный план</a>
+        <a href="/catalog-admin/groups">Справочник</a>
+        <a href="/app/instruction">Документация</a>
+      </nav>
+      <div class="hdr-spacer"></div>
+      <div class="hdr-right dashboard-header-actions" aria-label="Состояние">
+        <span class="hdr-lang"><span class="on">RU</span><span>EN</span></span>
+        <span class="hdr-user dashboard-user"><span class="av dashboard-user-avatar">МК</span><span>М. Кравцова</span></span>
+      </div>
+    </header>
     <main class="dashboard-shell">
-      <header class="dashboard-header">
-        <p class="eyebrow">Content Factory</p>
-        <h1>Рабочая панель</h1>
-      </header>
-      <section class="module-grid" aria-label="Модули">{{ module_tiles }}</section>
+      <section class="dashboard-hero" aria-labelledby="dashboardTitle">
+        <div class="dashboard-hero-copy">
+          <p class="eyebrow"><span class="badge-dot"></span> Главная · v 2.4</p>
+          <h1 id="dashboardTitle">Генератор учебных проектов</h1>
+          <p>Выберите режим работы. Все пять модулей — генератор, аудитор, перевод, учебный план и справочник — работают в едином S21-контуре с общей методологической базой и словарями.</p>
+          <div class="dashboard-meta-row" aria-label="Состояние сервиса">
+            <span class="dashboard-service"><span></span>Сервис доступен</span>
+            <span class="dashboard-dot"></span>
+            <span>Модулей: <strong>5</strong></span>
+            <span class="dashboard-dot"></span>
+            <span>Alembic: <strong>018</strong></span>
+          </div>
+        </div>
+        <div class="dashboard-mosaic" aria-hidden="true">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+        </div>
+      </section>
+      <section class="module-grid dashboard-mode-grid" aria-label="Модули">{{ module_tiles }}</section>
     </main>
     <script src="/static/shared/shell.js"></script>
   </body>

@@ -8,7 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.config import get_settings
 from app.core.models import Competency, CompetencyEdge, EvidenceSource, ProfilePackage, UPSkeleton
-from app.modules.curriculum.stages import stage_atomize, stage_brief_to_catalog, stage_catalog_to_dag, stage_dag_to_up, stage_normalize
+from app.modules.curriculum.stages.stage_atomize import run as run_atomize_stage
+from app.modules.curriculum.stages.stage_brief_to_catalog import run as run_brief_to_catalog_stage
+from app.modules.curriculum.stages.stage_catalog_to_dag import run as run_catalog_to_dag_stage
+from app.modules.curriculum.stages.stage_dag_to_up import run as run_dag_to_up_stage
+from app.modules.curriculum.stages.stage_normalize import run as run_normalize_stage
 
 
 class CatalogPipelineResult(BaseModel):
@@ -38,11 +42,11 @@ class CatalogPipelineResult(BaseModel):
 
 def run_catalog_pipeline(brief: str, *, client: Any | None = None, use_llm: bool | None = None) -> CatalogPipelineResult:
     settings = get_settings()
-    brief_result = stage_brief_to_catalog.run(brief, client=client, use_llm=use_llm)
-    atomized, atomize_report = stage_atomize.run(brief_result.competencies)
-    normalized, normalize_report = stage_normalize.run(atomized, brief_result.spec)
-    edges, dag_payload = stage_catalog_to_dag.run(normalized)
-    up = stage_dag_to_up.run(brief_result.spec, normalized, dag_payload)
+    brief_result = run_brief_to_catalog_stage(brief, client=client, use_llm=use_llm)
+    atomized, atomize_report = run_atomize_stage(brief_result.competencies)
+    normalized, normalize_report = run_normalize_stage(atomized, brief_result.spec)
+    edges, dag_payload = run_catalog_to_dag_stage(normalized)
+    up = run_dag_to_up_stage(brief_result.spec, normalized, dag_payload)
     return CatalogPipelineResult(
         spec=brief_result.spec,
         evidence_sources=brief_result.evidence_sources,

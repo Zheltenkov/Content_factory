@@ -30,7 +30,7 @@ BUILTIN_MODULES = (
     ),
     ModuleManifest(
         id="checker",
-        title="Проверка",
+        title="Аудитор",
         icon="check-circle",
         router=checker_router,
         ui_panel="checker/panel.html",

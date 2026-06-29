@@ -21,6 +21,11 @@ const el = {
   outcomes: document.getElementById("projectOutcomes"),
   tools: document.getElementById("projectTools"),
   story: document.getElementById("projectStory"),
+  summaryPlans: document.getElementById("curriculumSummaryPlans"),
+  summaryBlocks: document.getElementById("curriculumSummaryBlocks"),
+  summaryProjects: document.getElementById("curriculumSummaryProjects"),
+  summaryHours: document.getElementById("curriculumSummaryHours"),
+  summaryStatus: document.getElementById("curriculumSummaryStatus"),
 };
 
 async function request(path, options = {}) {
@@ -42,6 +47,7 @@ async function loadPlans(selectPlanId = null) {
   if (state.plans.length) {
     await loadPlan(Number(el.planSelect.value));
   } else {
+    renderSummary();
     setStatus("Нет сохраненных учебных планов");
   }
 }
@@ -66,8 +72,25 @@ async function loadPlan(planId) {
   state.currentPlan = planPayload.plan;
   state.cascade = cascade;
   renderBlocks();
+  renderSummary();
   await loadSelectedProject();
   setStatus(`${cascade.direction || "Направление"} · ${cascade.blocks.length} блоков`);
+}
+
+function renderSummary() {
+  const blocks = state.cascade?.blocks || [];
+  const projects = blocks.reduce((count, block) => count + block.projects.length, 0);
+  const rows = state.currentPlan?.rows || [];
+  const hours = rows.reduce((sum, row) => sum + Number(row.hours_astro || 0), 0);
+  setText(el.summaryPlans, state.plans.length || 0);
+  setText(el.summaryBlocks, blocks.length || 0);
+  setText(el.summaryProjects, projects || rows.length || 0);
+  setText(el.summaryHours, hours ? Number(hours.toFixed(1)) : 0);
+  setText(el.summaryStatus, state.currentPlan?.status || "draft");
+}
+
+function setText(node, value) {
+  if (node) node.textContent = String(value);
 }
 
 function renderBlocks() {

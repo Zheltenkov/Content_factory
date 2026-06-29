@@ -1,18 +1,34 @@
-const statusBox = document.getElementById("translatorStatus");
+const statusBox = document.getElementById("translationStatus") || document.getElementById("translatorStatus");
 const resultBox = document.getElementById("translatorResult");
 const originalBox = document.getElementById("translatorOriginal");
 const downloadsBox = document.getElementById("translatorDownloads");
-const progressBar = document.getElementById("translatorProgress");
+const progressBar = document.getElementById("translationProgressBar") || document.getElementById("translatorProgress");
 const metricsBox = document.getElementById("translatorMetrics");
 const jobPayload = document.getElementById("translatorJobPayload");
+const phaseLabel = document.getElementById("translationPhaseLabel");
+const progressPhase = document.getElementById("translationProgressPhase");
+const videoResultPanel = document.getElementById("translationVideoResultPanel");
+const videoInlineDownloads = document.getElementById("translationVideoInlineDownloadLinks");
 
 const DOWNLOAD_ORDER = ["video", "srt", "vtt", "ass", "transcript"];
+const PHASE_LABELS = {
+  queued: "В очереди",
+  parse_transcript: "Разбор transcript",
+  translate: "Перевод",
+  build_subtitles: "Формирование субтитров",
+  completed: "Готово",
+};
+
+let currentRequestId = null;
+let translatedMarkdown = "";
 
 function setStatus(text, kind = "") {
   statusBox.textContent = text;
   statusBox.classList.toggle("error-msg", kind === "error");
   statusBox.classList.toggle("success-msg", kind === "success");
   statusBox.classList.toggle("status-line", kind === "warning");
+  if (phaseLabel) phaseLabel.textContent = text;
+  if (progressPhase) progressPhase.textContent = text;
 }
 
 async function pollJob(requestId) {
@@ -23,12 +39,13 @@ async function pollJob(requestId) {
 
 document.getElementById("translatorDocumentForm").addEventListener("submit", async (event) => {
   event.preventDefault();
+  toggleTranslationSourceMode("document");
   resetResult("document");
   setStatus("Перевод документа выполняется...");
   setProgress(35);
-  const file = document.getElementById("translatorDocumentFile").files[0];
-  const targetLanguage = document.getElementById("translatorLanguage").value;
-  const translationMode = document.getElementById("translatorMode").value;
+  const file = document.getElementById("translationFile").files[0];
+  const targetLanguage = document.getElementById("translationLanguage").value;
+  const translationMode = document.getElementById("translationMode").value;
   const provider = document.getElementById("translatorProvider").value.trim();
   let startResponse;
   if (file) {
@@ -40,7 +57,7 @@ document.getElementById("translatorDocumentForm").addEventListener("submit", asy
     startResponse = await fetch("/translator/translate/document", { method: "POST", body });
     await renderMarkdownPreview(originalBox, `Файл: ${file.name}`, "Файл не выбран.");
   } else {
-    const markdown = document.getElementById("translatorMarkdown").value.trim();
+    const markdown = document.getElementById("translationInput").value.trim();
     await renderMarkdownPreview(originalBox, markdown, "Исходный документ пуст.");
     startResponse = await fetch("/translator/translate/readme", {
       method: "POST",
@@ -53,9 +70,12 @@ document.getElementById("translatorDocumentForm").addEventListener("submit", asy
 
 document.getElementById("translatorVideoForm").addEventListener("submit", async (event) => {
   event.preventDefault();
+  toggleTranslationSourceMode("video");
   resetResult("video");
+  resetVideoResultPanel();
   setProgress(25);
-  const file = document.getElementById("translatorVideoFile").files[0];
+  setVideoProgress("Загрузка video/subtitle source", 15, true);
+  const file = document.getElementById("translationVideoFile").files[0];
   const transcript = document.getElementById("translatorTranscript").value.trim();
   if (!file && !transcript) {
     setStatus("Добавьте файл субтитров или transcript.", "error");
@@ -64,13 +84,15 @@ document.getElementById("translatorVideoForm").addEventListener("submit", async 
   }
   const body = new FormData();
   body.append("file", file || new Blob([transcript], { type: "text/plain" }), file ? file.name : "transcript.txt");
-  body.append("target_language", document.getElementById("translatorVideoLanguage").value);
-  body.append("output_mode", document.getElementById("translatorOutputMode").value);
+  body.append("target_language", document.getElementById("translationLanguageMirror").value);
+  body.append("output_mode", document.getElementById("translationOutputMode").value);
   body.append("subtitle_style", document.getElementById("translatorSubtitleStyle").value);
   const provider = document.getElementById("translatorVideoProvider").value.trim();
   if (provider) body.append("llm_provider", provider);
   if (transcript) body.append("transcript_text", transcript);
+  setUploadProgress(15, true);
   const startResponse = await fetch("/translator/translate/video", { method: "POST", body });
+  setUploadProgress(startResponse.ok ? 100 : 0, startResponse.ok);
   await renderStartedJob(startResponse, true);
 });
 
@@ -81,6 +103,7 @@ async function renderStartedJob(startResponse, isVideo) {
     return;
   }
   const started = await startResponse.json();
+  currentRequestId = started.request_id;
   const job = await pollJob(started.request_id);
   renderJob(job);
   if (job.status === "failed") {
@@ -89,15 +112,18 @@ async function renderStartedJob(startResponse, isVideo) {
     return;
   }
   setProgress(job.progress || 100);
+  setVideoProgress(labelForPhase(job.phase, job.status), job.progress || 100, isVideo);
   setStatus(isVideo ? "Видео / субтитры готовы" : "Документ готов", "success");
   if (isVideo) {
     await renderMarkdownPreview(originalBox, transcriptToMarkdown(job.original_transcript), "Транскрипт не вернулся.");
     await renderMarkdownPreview(resultBox, job.translated_subtitles || "", "Субтитры не вернулись.");
     renderDownloads(started.request_id, job.result_links || {});
+    renderVideoResultPanel(started.request_id, job);
     if (job.error_code === "video_burn_deferred") appendDeferredVideoNotice();
   } else {
+    translatedMarkdown = job.translated_markdown || "";
     await renderMarkdownPreview(originalBox, job.original_markdown || "", "Исходный документ не вернулся.");
-    await renderMarkdownPreview(resultBox, job.translated_markdown || "", "Перевод не вернулся.");
+    await renderMarkdownPreview(resultBox, translatedMarkdown, "Перевод не вернулся.");
   }
   activateTab("translatorResultTab");
 }
@@ -115,6 +141,35 @@ function renderDownloads(requestId, links) {
     link.textContent = `${type.toUpperCase()} · ${links[type]}`;
     link.className = "list-item";
     downloadsBox.appendChild(link);
+  }
+}
+
+function renderVideoResultPanel(requestId, job) {
+  if (!videoResultPanel || !videoInlineDownloads) return;
+  videoResultPanel.hidden = false;
+  const links = job.result_links || {};
+  document.getElementById("translationVideoResultTitle").textContent = job.error_code === "video_burn_deferred"
+    ? "Субтитры готовы, video burn отложен"
+    : "Субтитры и файлы перевода готовы";
+  document.getElementById("translationVideoResultHint").textContent = job.error_code === "video_burn_deferred"
+    ? "Backend вернул video_burn_deferred: скачайте VTT/SRT/ASS/transcript, а burned video будет доступен после подключения burn adapter."
+    : "Скачайте нужные файлы здесь. Они относятся к обработанному видео.";
+  videoInlineDownloads.innerHTML = "";
+  for (const type of DOWNLOAD_ORDER.filter((item) => links[item])) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = type === "video" ? "Скачать видео с переводом" : type.toUpperCase();
+    button.disabled = type === "video" && job.error_code === "video_burn_deferred";
+    button.addEventListener("click", () => downloadArtifact(requestId, type));
+    videoInlineDownloads.appendChild(button);
+  }
+  if (links.srt) {
+    const fallback = document.createElement("button");
+    fallback.id = "downloadTranslatedSubtitlesBtn";
+    fallback.type = "button";
+    fallback.textContent = "Скачать субтитры";
+    fallback.addEventListener("click", downloadTranslatedSubtitles);
+    videoInlineDownloads.appendChild(fallback);
   }
 }
 
@@ -137,10 +192,11 @@ function resetResult(kind) {
   downloadsBox.innerHTML = kind === "video"
     ? '<div class="empty-inline">Ожидает video/subtitle job.</div>'
     : '<div class="empty-inline">Для документов отдельные файлы не создаются; результат доступен во вкладке Перевод.</div>';
+  resetVideoResultPanel();
 }
 
 function setProgress(value) {
-  progressBar.style.setProperty("--progress", `${Math.max(0, Math.min(100, Number(value) || 0))}%`);
+  progressBar?.style.setProperty("--progress", `${Math.max(0, Math.min(100, Number(value) || 0))}%`);
 }
 
 function metricCard(label, value) {
@@ -156,6 +212,110 @@ function appendDeferredVideoNotice() {
   notice.className = "empty-inline";
   notice.textContent = "Burned video adapter отложен backend-ом: доступны subtitle artifacts.";
   downloadsBox.prepend(notice);
+}
+
+function resetVideoResultPanel() {
+  if (videoResultPanel) videoResultPanel.hidden = true;
+  if (videoInlineDownloads) videoInlineDownloads.innerHTML = "";
+}
+
+function setVideoProgress(label, percent, visible) {
+  const panel = document.getElementById("translationVideoProgress");
+  const labelEl = document.getElementById("translationVideoProgressLabel");
+  const pctEl = document.getElementById("translationVideoProgressPct");
+  const barEl = document.getElementById("translationVideoProgressBar");
+  if (!panel || !labelEl || !pctEl || !barEl) return;
+  const normalized = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+  panel.hidden = !visible;
+  labelEl.textContent = label || "Выполняется";
+  pctEl.textContent = `${normalized}%`;
+  barEl.style.setProperty("--progress", `${normalized}%`);
+}
+
+function setUploadProgress(percent, visible) {
+  const panel = document.getElementById("translationUploadProgressContainer");
+  const label = document.getElementById("translationUploadProgressLabel");
+  const bar = document.getElementById("translationUploadProgressBar");
+  if (!panel || !label || !bar) return;
+  const normalized = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+  panel.hidden = !visible;
+  label.textContent = `Загрузка видео: ${normalized}%`;
+  bar.style.setProperty("--progress", `${normalized}%`);
+}
+
+function labelForPhase(phase, status) {
+  if (status === "completed") return "Готово";
+  return PHASE_LABELS[phase] || "Выполняется";
+}
+
+function updateTranslationOutputMode() {
+  const wantVideo = document.getElementById("translationWantVideo").checked;
+  const wantSubtitles = document.getElementById("translationWantSubtitles").checked;
+  const output = document.getElementById("translationOutputMode");
+  if (wantVideo && wantSubtitles) output.value = "both";
+  else if (wantVideo) output.value = "burned_video";
+  else output.value = "subtitles_only";
+}
+
+function syncTranslationLanguageFromMirror(sourceId) {
+  const documentLanguage = document.getElementById("translationLanguage");
+  const mirror = document.getElementById("translationLanguageMirror");
+  if (sourceId === "mirror") documentLanguage.value = mirror.value;
+  else mirror.value = documentLanguage.value;
+}
+
+function toggleTranslationSourceMode(mode) {
+  const isVideo = mode === "video" || document.getElementById("translationSourceVideo").checked;
+  document.getElementById("translationSourceDocument").checked = !isVideo;
+  document.getElementById("translationSourceVideo").checked = isVideo;
+  document.getElementById("translatorDocumentForm").style.display = isVideo ? "none" : "block";
+  document.getElementById("translationVideoScreen").style.display = isVideo ? "block" : "none";
+  document.getElementById("translationSourceDocumentLabel").classList.toggle("active", !isVideo);
+  document.getElementById("translationSourceVideoLabel").classList.toggle("active", isVideo);
+}
+
+async function downloadArtifact(requestId, type) {
+  if (!requestId || !type) return;
+  window.location.href = `/translator/translate/download/${requestId}?type=${encodeURIComponent(type)}`;
+}
+
+async function downloadTranslatedSubtitles() {
+  if (!currentRequestId) return;
+  const format = document.getElementById("translationSubtitleFormat")?.value || "srt";
+  if (format !== "srt") {
+    await downloadArtifact(currentRequestId, format);
+    return;
+  }
+  window.location.href = `/translator/translate/subtitles/${currentRequestId}`;
+}
+
+function copyTranslatedMarkdown() {
+  const text = translatedMarkdown || resultBox.innerText || "";
+  if (!text.trim()) return;
+  navigator.clipboard?.writeText(text);
+}
+
+function downloadTranslatedMarkdown() {
+  const blob = new Blob([translatedMarkdown || resultBox.innerText || ""], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "README_translated.md";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function showTranslationCompare() {
+  document.querySelectorAll(".tab-button[data-tab-target]").forEach((button) => {
+    button.classList.remove("active");
+    button.setAttribute("aria-selected", "false");
+  });
+  document.getElementById("translatorOriginalTab").hidden = false;
+  document.getElementById("translatorResultTab").hidden = false;
+  document.getElementById("translatorOriginalTab").classList.add("active");
+  document.getElementById("translatorResultTab").classList.add("active");
 }
 
 function transcriptToMarkdown(payload) {
@@ -184,3 +344,35 @@ function escapeHtml(value) {
 }
 
 setProgress(0);
+
+document.getElementById("translationSourceDocument").addEventListener("change", () => toggleTranslationSourceMode("document"));
+document.getElementById("translationSourceVideo").addEventListener("change", () => toggleTranslationSourceMode("video"));
+document.getElementById("translationLanguage").addEventListener("change", () => syncTranslationLanguageFromMirror("document"));
+document.getElementById("translationLanguageMirror").addEventListener("change", () => syncTranslationLanguageFromMirror("mirror"));
+document.getElementById("translationWantVideo").addEventListener("change", updateTranslationOutputMode);
+document.getElementById("translationWantSubtitles").addEventListener("change", updateTranslationOutputMode);
+document.getElementById("translationWantTranscript").addEventListener("change", updateTranslationOutputMode);
+document.getElementById("translationVideoFile").addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  document.getElementById("translationVideoTitle").textContent = file?.name || "Видео не выбрано";
+  document.getElementById("translationVideoFileName").textContent = file ? `${Math.max(1, Math.round(file.size / 1024 / 1024))} MB · загружен` : "До 500 MB";
+  setVideoProgress("Готов к обработке", 0, Boolean(file));
+  setUploadProgress(0, false);
+});
+document.getElementById("translationFile").addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  document.getElementById("translationFileName").textContent = file ? `${file.name} · ${Math.max(1, Math.round(file.size / 1024))} КБ` : "Документ для перевода";
+});
+document.getElementById("translationClearBtn").addEventListener("click", () => {
+  document.getElementById("translationInput").value = "";
+  document.getElementById("translationFile").value = "";
+  document.getElementById("translationFileName").textContent = "Документ для перевода";
+  resetResult("document");
+  setStatus("Ожидает запуска.");
+  setProgress(0);
+});
+document.getElementById("copyTranslatedMarkdownBtn").addEventListener("click", copyTranslatedMarkdown);
+document.getElementById("downloadTranslatedMarkdownBtn").addEventListener("click", downloadTranslatedMarkdown);
+document.getElementById("compareTranslationBtn").addEventListener("click", showTranslationCompare);
+syncTranslationLanguageFromMirror("document");
+toggleTranslationSourceMode("document");

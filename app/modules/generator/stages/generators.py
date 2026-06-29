@@ -197,6 +197,12 @@ def generate_assets(
     warnings: list[str] = []
 
     formulas, tables, visuals = _generate_learning_assets(context, theory_parts)
+    if state.get("include_formulas") is False:
+        formulas = []
+    if state.get("include_tables") is False:
+        tables = []
+    if state.get("include_diagrams") is False:
+        visuals = []
     dataset_files = _generate_dataset_files(context, tasks, evidence_specs, draft, warnings)
     code_examples = _generate_code_examples(context, theory_parts, draft)
 

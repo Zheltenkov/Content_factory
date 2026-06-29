@@ -27,7 +27,11 @@ class MockTransport:
 
 def test_w6_u7_dashboard_tiles_drive_live_module_workflows() -> None:
     repo = _repo()
-    translator_transport = MockTransport("# REST API\n\nTranslated body for learners.")
+    translator_transport = MockTransport(
+        "# REST API\n\nTranslated body for learners.",
+        "# Uploaded lesson\n\nTranslated document body.",
+        '{"segments":[{"id":1,"text":"Hello from final UI"}]}',
+    )
     translator_llm = LLMClient(model="gpt-4o-mini", provider="mock", transport=translator_transport)
     translator_service = TranslatorService(client_factory=lambda **_kwargs: translator_llm)
     app = create_app()
@@ -45,9 +49,21 @@ def test_w6_u7_dashboard_tiles_drive_live_module_workflows() -> None:
     payload = modules.json()
     by_id = {item["id"]: item for item in payload}
     assert set(by_id) == {"generator", "checker", "translator", "curriculum", "reference"}
+    route_by_module = {
+        "generator": "/app/generate",
+        "checker": "/app/check",
+        "translator": "/app/translate",
+        "curriculum": "/up",
+        "reference": "/catalog-admin/groups",
+    }
+    assert "Alembic: <strong>018</strong>" in dashboard.text
     for module in payload:
         panel = module["ui_panel"]
         assert f'data-panel="{panel}"' in dashboard.text
+        assert f'href="{route_by_module[module["id"]]}"' in dashboard.text
+        route_response = client.get(route_by_module[module["id"]])
+        assert route_response.status_code == 200
+        assert '<script src="/static/shared/shell.js"></script>' in route_response.text
         panel_response = client.get(f"/static/{panel}")
         assert panel_response.status_code == 200
         assert "Content Factory" in panel_response.text
@@ -64,9 +80,17 @@ def _assert_panels_hit_real_endpoints(client: TestClient) -> None:
     expected = {
         "curriculum": ("/curriculum/plans", "/curriculum/projects", "/curriculum/plans/import-csv"),
         "generator": ("/curriculum/plans", "/generator/runs/from-curriculum"),
-        "checker": ("/checker/evaluate",),
+        "checker": ("/checker/evaluate", "/checker/improve/extract", "/checker/improve/generate", "/checker/improve/status"),
         "translator": ("/translator/translate/readme", "/translator/translate/document", "/translator/translate/video"),
-        "reference": ("/reference/summary", "/reference/competencies", "/reference/profiles", "/reference/reviews"),
+        "reference": (
+            "/reference/summary",
+            "/reference/competencies",
+            "/reference/profiles",
+            "/reference/reviews",
+            "/reference/archive",
+            "/reference/artifact-templates",
+            "/intake/jobs",
+        ),
     }
     for module_id, endpoints in expected.items():
         js = client.get(f"/static/{module_id}/panel.js")
@@ -122,6 +146,16 @@ def _exercise_checker(client: TestClient, generated_markdown: str) -> None:
     assert "readme_structure.h1_first" in codes
     assert "document_integrity.unclosed_fence" in codes
 
+    extracted = client.post("/checker/improve/extract", json={"readme_text": "Без H1\n\nTODO"})
+    assert extracted.status_code == 200
+    generated = client.post(
+        "/checker/improve/generate",
+        json={"request_id": extracted.json()["request_id"], "seed": {"title_seed": "UI parity README", "tasks_count": 2}},
+    )
+    assert generated.status_code == 200
+    improved = client.get(f"/checker/improve/status/{generated.json()['generation_request_id']}").json()
+    assert "UI parity README" in improved["result"]["markdown"]
+
 
 def _exercise_reference_editor(client: TestClient, repo: CurriculumCatalogRepo) -> None:
     link = repo.save_competency(_competency(), source_note="u7-reference")
@@ -167,7 +201,29 @@ def _exercise_translator(client: TestClient, transport: MockTransport) -> None:
     payload = status.json()
     assert payload["status"] == "completed"
     assert "Translated body" in payload["translated_markdown"]
-    assert transport.requests
+    document = client.post(
+        "/translator/translate/document",
+        data={"target_language": "en", "translation_mode": "literal"},
+        files={"file": ("lesson.md", b"# Lesson\n\n\xd0\xa2\xd0\xb5\xd0\xba\xd1\x81\xd1\x82.", "text/markdown")},
+    )
+    assert document.status_code == 200
+    document_status = client.get(f"/translator/translate/status/{document.json()['request_id']}").json()
+    assert document_status["status"] == "completed"
+    assert document_status["source_filename"] == "lesson.md"
+    assert "Translated document body" in document_status["translated_markdown"]
+
+    video = client.post(
+        "/translator/translate/video",
+        data={"target_language": "en", "output_mode": "subtitles_only"},
+        files={"file": ("lesson.srt", b"1\n00:00:00,000 --> 00:00:04,000\n\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82\n", "text/plain")},
+    )
+    assert video.status_code == 200
+    video_status = client.get(f"/translator/translate/status/{video.json()['request_id']}").json()
+    assert video_status["status"] == "completed"
+    assert video_status["job_type"] == "video"
+    assert "Hello from final UI" in video_status["translated_subtitles"]
+    assert sorted(video_status["result_links"]) == ["ass", "srt", "transcript", "vtt"]
+    assert len(transport.requests) == 3
 
 
 def _repo() -> CurriculumCatalogRepo:

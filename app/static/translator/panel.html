@@ -5,34 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Переводчик · Content Factory</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=s21-legacy-design" />
   </head>
-  <body>
+  <body class="s21-product page-translate">
+    <header class="hdr dashboard-header--menu">
+      <a class="hdr-brand" href="/app" aria-label="Главная">
+        <span class="hdr-mark">21</span>
+        <span class="hdr-title">
+          <b>Генератор</b>
+          <span>учебных проектов · v 2.4</span>
+        </span>
+      </a>
+      <nav class="hdr-nav dashboard-nav" aria-label="Основные разделы">
+        <a href="/app">Главная</a>
+        <a href="/app/generate">Генерация</a>
+        <a href="/app/check">Проверка</a>
+        <a class="active" href="/app/translate">Перевод</a>
+        <a href="/app/instruction">Документация</a>
+      </nav>
+      <div class="hdr-spacer"></div>
+      <div class="hdr-right dashboard-header-actions" aria-label="Состояние">
+        <span class="hdr-lang"><span class="on">RU</span><span>EN</span></span>
+        <span class="hdr-user dashboard-user"><span class="av dashboard-user-avatar">МК</span><span>М. Кравцова</span></span>
+      </div>
+    </header>
     <main class="workbench translator-panel" data-module="translator">
       <header class="workbench-header">
-        <a class="back-link" href="/">Content Factory</a>
+        <a class="back-link" href="/app">← Главное меню</a>
         <h1>Переводчик</h1>
         <nav class="toolbar" aria-label="Связанные модули">
-          <a class="btn" href="/static/generator/panel.html">Генератор</a>
-          <a class="btn" href="/static/checker/panel.html">Проверка</a>
+          <a class="btn" href="/app/generate">Генератор</a>
+          <a class="btn" href="/app/check">Проверка</a>
         </nav>
       </header>
+
+      <section class="editor-panel">
+        <div class="inline-actions" id="translationSourceSwitch">
+          <label class="pill active" id="translationSourceDocumentLabel">
+            <input id="translationSourceDocument" name="translationSource" type="radio" value="document" checked />
+            Документ
+          </label>
+          <label class="pill" id="translationSourceVideoLabel">
+            <input id="translationSourceVideo" name="translationSource" type="radio" value="video" />
+            Видео
+          </label>
+          <span id="translationPhaseLabel" class="badge">Ожидает запуска</span>
+        </div>
+      </section>
 
       <section class="tool-grid">
         <form class="editor-panel" id="translatorDocumentForm">
           <h2>Документ</h2>
           <label>Текст README или документа</label>
-          <textarea id="translatorMarkdown" rows="14" placeholder="# Проект&#10;&#10;Описание на русском языке"></textarea>
+          <textarea id="translationInput" rows="14" placeholder="# Проект&#10;&#10;Описание на русском языке"></textarea>
           <label>Файл</label>
-          <input id="translatorDocumentFile" type="file" accept=".md,.markdown,.txt,.html,.htm,.docx,.pdf" />
+          <input id="translationFile" type="file" accept=".md,.markdown,.txt,.html,.htm,.docx,.pdf" />
+          <div class="inline-actions">
+            <span id="translationFileName" class="empty-inline">Документ для перевода</span>
+            <button id="translationClearBtn" type="button">Очистить</button>
+          </div>
           <div class="toolbar">
-            <select id="translatorLanguage">
+            <select id="translationLanguage">
               <option value="en">EN · Английский</option>
               <option value="kg">KG · Кыргызский</option>
               <option value="uz">UZ · Узбекский</option>
               <option value="tg">TG · Таджикский</option>
               <option value="ru">RU · Русский</option>
             </select>
-            <select id="translatorMode">
+            <select id="translationMode">
               <option value="literal">Дословный</option>
               <option value="combined">Дословный + читаемость</option>
             </select>
@@ -41,21 +81,42 @@
           </div>
         </form>
 
-        <section class="editor-panel">
+        <section id="translationVideoScreen" class="editor-panel">
           <h2>Видео / субтитры</h2>
           <form id="translatorVideoForm">
             <label>Видео, SRT/VTT/JSON или transcript</label>
-            <input id="translatorVideoFile" type="file" accept=".mp4,.webm,.mov,.avi,.mkv,.m4v,.srt,.vtt,.json,.txt" />
+            <input id="translationVideoFile" type="file" accept=".mp4,.webm,.mov,.avi,.mkv,.m4v,.srt,.vtt,.json,.txt" />
+            <div class="empty-inline">
+              <strong id="translationVideoTitle">Видео не выбрано</strong>
+              <span id="translationVideoFileName">До 500 MB</span>
+            </div>
+            <div id="translationUploadProgressContainer" class="side-panel" hidden>
+              <div id="translationUploadProgressLabel">Загрузка видео: 0%</div>
+              <div class="progress-track"><div id="translationUploadProgressBar" class="progress-bar"></div></div>
+            </div>
+            <div id="translationVideoProgress" class="side-panel" hidden>
+              <div class="inline-actions">
+                <span id="translationVideoProgressLabel">Ожидает запуска</span>
+                <span id="translationVideoProgressPct">0%</span>
+              </div>
+              <div class="progress-track"><div id="translationVideoProgressBar" class="progress-bar"></div></div>
+            </div>
             <label>Transcript override</label>
             <textarea id="translatorTranscript" rows="8" placeholder="00:00:00,000 --> 00:00:04,000&#10;Привет, это вводный модуль"></textarea>
+            <div class="levels-grid">
+              <label class="inline-actions"><input id="translationWantVideo" type="checkbox" checked /> Видео с субтитрами</label>
+              <label class="inline-actions"><input id="translationWantSubtitles" type="checkbox" checked /> Файлы субтитров</label>
+              <label class="inline-actions"><input id="translationWantTranscript" type="checkbox" /> Транскрипт</label>
+            </div>
             <div class="toolbar">
-              <select id="translatorVideoLanguage">
+              <select id="translationLanguageMirror">
                 <option value="en">EN</option>
                 <option value="kg">KG</option>
                 <option value="uz">UZ</option>
                 <option value="tg">TG</option>
+                <option value="ru">RU</option>
               </select>
-              <select id="translatorOutputMode">
+              <select id="translationOutputMode">
                 <option value="subtitles_only">Субтитры</option>
                 <option value="both">Субтитры + video adapter</option>
                 <option value="burned_video">Только video adapter</option>
@@ -63,6 +124,11 @@
               <select id="translatorSubtitleStyle">
                 <option value="boxed">Boxed</option>
                 <option value="outline">Outline</option>
+              </select>
+              <select id="translationSubtitleFormat">
+                <option value="srt">SRT</option>
+                <option value="vtt">VTT</option>
+                <option value="ass">ASS</option>
               </select>
               <input id="translatorVideoProvider" type="text" placeholder="LLM provider" />
               <button type="submit">Перевести видео</button>
@@ -74,12 +140,20 @@
       <section class="tool-grid">
         <aside class="side-panel">
           <h2>Статус</h2>
-          <div id="translatorStatus" class="empty-inline">Ожидает запуска.</div>
-          <div class="progress-track" aria-hidden="true">
-            <div id="translatorProgress" class="progress-bar"></div>
+          <div id="translationStatus" class="empty-inline">Ожидает запуска.</div>
+          <div id="translationProgressContainer" class="side-panel">
+            <span id="translationProgressPhase">Ожидает запуска</span>
+            <div class="progress-track" aria-hidden="true">
+              <div id="translationProgressBar" class="progress-bar"></div>
+            </div>
           </div>
           <div id="translatorMetrics" class="metrics-grid"></div>
           <div id="translatorDownloads" class="reference-list compact"></div>
+          <section id="translationVideoResultPanel" class="empty-inline" hidden>
+            <strong id="translationVideoResultTitle">Субтитры и файлы перевода готовы</strong>
+            <p id="translationVideoResultHint">Кнопки появляются после завершения обработки видео.</p>
+            <div id="translationVideoInlineDownloadLinks" class="inline-actions"></div>
+          </section>
         </aside>
         <section class="editor-panel translator-result-panel">
           <div class="tab-list" role="tablist" aria-label="Результат перевода">
@@ -92,6 +166,11 @@
           </section>
           <section id="translatorResultTab" class="tab-content" role="tabpanel" hidden>
             <article id="translatorResult" class="markdown-preview"></article>
+            <div class="form-actions">
+              <button id="copyTranslatedMarkdownBtn" type="button">Копировать</button>
+              <button id="downloadTranslatedMarkdownBtn" type="button">Скачать</button>
+              <button id="compareTranslationBtn" type="button">Сравнить</button>
+            </div>
           </section>
           <section id="translatorJobTab" class="tab-content" role="tabpanel" hidden>
             <details class="generated-data-preview" open>

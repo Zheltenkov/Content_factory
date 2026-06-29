@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -51,12 +51,17 @@ class GeneratorService:
         project_order: int,
         profile_id: str = "_base",
         program_type: str | None = None,
+        overrides: Mapping[str, Any] | None = None,
+        run_id: str | None = None,
     ) -> GeneratorRun:
         context = self.curriculum_repo.get_context(plan_id, project_order)
         if context is None:
             raise CurriculumContextNotFound(f"curriculum project not found: plan_id={plan_id}, project_order={project_order}")
+        context = _apply_overrides(context, overrides)
 
-        engine = self.engine_factory(profile_id, program_type=program_type)
+        generation_options = dict(overrides or {})
+        workflow_profile = "methodology" if generation_options.get("methodology_human_review") else "standard"
+        engine = self.engine_factory(profile_id, program_type=program_type, run_id=run_id, workflow_profile=workflow_profile)
         template_blocks = _template_blocks(engine)
         result = engine.run(
             [
@@ -122,20 +127,76 @@ class GeneratorService:
                     gate_stage="evaluation",
                 ),
             ],
-            _engine_context(context),
+            _engine_context(context, overrides, run_id=run_id),
         )
         document = result.documents["generator.evaluation"]
         return GeneratorRun(context=context, document=document, engine_result=result)
 
 
-def _engine_context(context: CurriculumContext) -> dict[str, Any]:
+def _engine_context(context: CurriculumContext, overrides: Mapping[str, Any] | None = None, *, run_id: str | None = None) -> dict[str, Any]:
     project = context.current_project_payload()
+    generation_options = dict(overrides or {})
     return {
         "curriculum_context": context.model_dump(mode="json"),
         "curriculum.projects": [project],
         "current_project": project,
         "reference.competencies": [ref.model_dump(mode="json") for ref in context.current_project_competency_refs],
+        "generation_options": generation_options,
+        "run_id": run_id,
+        "include_diagrams": generation_options.get("include_diagrams"),
+        "include_tables": generation_options.get("include_tables"),
+        "include_formulas": generation_options.get("include_formulas"),
+        "generate_bonus": generation_options.get("generate_bonus"),
+        "bonus_wish": generation_options.get("bonus_wish"),
+        "regeneration_comments": generation_options.get("regeneration_comment") or generation_options.get("regeneration_comments") or "",
+        "methodology_human_review": generation_options.get("methodology_human_review"),
     }
+
+
+def _apply_overrides(context: CurriculumContext, overrides: Mapping[str, Any] | None) -> CurriculumContext:
+    """Apply legacy form seed overrides to one in-memory generation run."""
+    if not overrides:
+        return context
+    update: dict[str, Any] = {}
+    mapping = {
+        "title": "current_project_title",
+        "description": "current_project_description",
+        "learning_outcomes": "current_project_learning_outcomes",
+        "skills": "current_project_skills",
+        "audience_level": "current_project_audience_level",
+        "required_tools": "current_project_required_tools",
+        "required_software": "current_project_required_software",
+        "project_format": "current_project_format",
+        "group_size": "current_project_group_size",
+        "workload_hours": "current_project_workload_hours",
+        "platform_name": "current_project_platform_name",
+        "gitlab_link": "current_project_gitlab_link",
+        "storytelling_type": "storytelling_type",
+        "storytelling": "sjm_context",
+        "additional_materials": "additional_materials",
+    }
+    list_keys = {"learning_outcomes", "skills", "required_tools", "required_software"}
+    for source, target in mapping.items():
+        if source not in overrides:
+            continue
+        value = _as_list(overrides[source]) if source in list_keys else overrides[source]
+        if value is None or value == "":
+            continue
+        update[target] = value
+    if overrides.get("project_content_type"):
+        notes = context.expert_development_notes or ""
+        update["expert_development_notes"] = "\n".join(
+            part for part in [notes, f"content_type={overrides['project_content_type']}"] if part
+        )
+    return context.model_copy(update=update)
+
+
+def _as_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        raw = value
+    else:
+        raw = str(value or "").replace(";", "\n").splitlines()
+    return [str(item).strip(" \t-") for item in raw if str(item).strip(" \t-")]
 
 
 def _template_blocks(engine: GeneratorMethodologyEngine) -> str:
@@ -167,6 +228,7 @@ def _document_from_context(context: CurriculumContext, engine_context: dict[str,
             "source": "curriculum_db",
             "plan_id": context.plan_id,
             "project_order": context.current_project_order,
+            "generation_options": engine_context.get("generation_options") or {},
             "artifact_target": "readme_project",
             "readme_structure_required": True,
             "template_blocks_required": True,

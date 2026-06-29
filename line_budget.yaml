@@ -13,6 +13,10 @@ packages:
     paths:
       - app/modules/checker/**/*.py
     max_lines: 3000
+  curriculum:
+    paths:
+      - app/modules/curriculum/**/*.py
+    max_lines: 6000
   reference:
     paths:
       - app/modules/reference/**/*.py
