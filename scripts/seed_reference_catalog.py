@@ -36,7 +36,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.core.config.settings import get_settings  # noqa: E402
 
 DEFAULT_SQLITE = "legacy/Spravochnik/artifacts/skills_catalog.sqlite"
-SKIP_TABLES = {"alembic_version", "schema_migration"}
+# Schema/meta tables that must never be copied.
+SCHEMA_TABLES = {"alembic_version", "schema_migration"}
+# Operational/transient state from the legacy working session — NOT reference data.
+# The review queue, intake/ingest jobs and AI-analysis runs are another methodologist's
+# in-flight decisions; a fresh catalog must not inherit them.
+TRANSIENT_TABLES = {
+    "review_queue",
+    "intake_job",
+    "ingest_run",
+    "ai_analysis_run",
+    "ai_analysis_suggestion",
+}
+SKIP_TABLES = SCHEMA_TABLES | TRANSIENT_TABLES
 VERIFY_TABLES = (
     "competency",
     "skill",
