@@ -38,7 +38,11 @@ def complete_typed(
     resolved_client = client or create_llm_client()
     resolved_prompt = _coerce_prompt(prompt)
     call_kwargs = {**resolved_prompt.kwargs, **kwargs}
-    response_format = _response_format_for(schema, getattr(resolved_client, "model", None))
+    response_format = _response_format_for(
+        schema,
+        getattr(resolved_client, "model", None),
+        getattr(resolved_client, "provider", None),
+    )
     last_error: Exception | None = None
     last_response: Any = None
 
@@ -87,7 +91,13 @@ def _coerce_prompt(prompt: str | StructuredPrompt | dict[str, str]) -> Structure
     return StructuredPrompt(user=prompt["user"], system=prompt.get("system", StructuredPrompt.system))
 
 
-def _response_format_for(schema: type[BaseModel], model_name: str | None) -> str | dict[str, Any]:
+def _response_format_for(
+    schema: type[BaseModel], model_name: str | None, provider: str | None = None
+) -> str | dict[str, Any]:
+    # Proxied providers (polza/openrouter -> Azure) reject pydantic's $ref/strict schema,
+    # so they fall back to json_object + pydantic parse; direct providers keep json_schema.
+    if str(provider or "").lower() in {"polza", "openrouter"}:
+        return "json_object"
     if not supports_json_schema_model(model_name):
         return "json_object"
     return {
