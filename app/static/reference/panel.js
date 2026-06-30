@@ -124,6 +124,7 @@ const el = {
   intakeComposePanel: document.getElementById("intakeComposePanel"),
   intakeForm: document.getElementById("intakeForm"),
   briefText: document.getElementById("briefText"),
+  briefUseLlm: document.getElementById("briefUseLlm"),
   briefFileInput: document.getElementById("briefFileInput"),
   pickerStatus: document.getElementById("pickerStatus"),
   briefSubmitWrap: document.getElementById("briefSubmitWrap"),
@@ -2020,7 +2021,8 @@ el.intakeForm.addEventListener("submit", async (event) => {
     setStatus("Добавьте текст брифа или выберите текстовый файл");
     return;
   }
-  el.jobProgress.textContent = "Запускаем intake pipeline...";
+  const useLlm = el.briefUseLlm ? el.briefUseLlm.checked : false;
+  el.jobProgress.textContent = useLlm ? "Запускаем intake pipeline (LLM-декомпозиция)..." : "Запускаем intake pipeline...";
   setStatus("Intake pipeline запущен");
   const job = await request("/intake/jobs", {
     method: "POST",
@@ -2029,7 +2031,7 @@ el.intakeForm.addEventListener("submit", async (event) => {
       source_kind: file ? "file" : "text",
       source_name: file?.name || null,
       use_council: true,
-      use_llm: false,
+      use_llm: useLlm,
     }),
   });
   window.location.href = `/intake/jobs/${job.id}`;

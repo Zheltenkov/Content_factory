@@ -3131,6 +3131,19 @@ body.s21-product.methodologist-product .pill.resolution-unresolved,
   border-left-color: #b85c38;
 }
 
+.intake-submit-row {
+  align-items: center;
+  gap: 14px;
+}
+
+.intake-llm-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--m-ink-muted);
+  cursor: pointer;
+}
+
 .draft-up-section-label {
   margin-top: 6px;
 }

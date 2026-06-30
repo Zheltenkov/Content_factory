@@ -40,6 +40,19 @@ def _setting(name: str, dotenv: dict[str, str], default: str | None = None) -> s
     return dotenv.get(name, default)
 
 
+def load_project_env() -> dict[str, str]:
+    """Export project .env values into os.environ (without overriding real env).
+
+    Components such as the LLM client read keys via raw ``os.getenv`` rather than
+    Settings, so make the .env values visible there too. Real environment
+    variables always win.
+    """
+    dotenv = _dotenv_values(_project_dotenv())
+    for key, value in dotenv.items():
+        os.environ.setdefault(key, value)
+    return dotenv
+
+
 class Settings(BaseModel):
     """Small env-based settings object without framework coupling."""
 
@@ -52,7 +65,7 @@ class Settings(BaseModel):
 
     @classmethod
     def from_env(cls) -> "Settings":
-        dotenv = _dotenv_values(_project_dotenv())
+        dotenv = load_project_env()
         path = _setting("CONTENT_FACTORY_THRESHOLDS", dotenv)
         return cls(
             app_name=_setting("APP_NAME", dotenv, "content-factory") or "content-factory",
