@@ -147,6 +147,10 @@ def create_app(modules: Sequence[ModuleManifest] | None = None) -> FastAPI:
     def spravochnik_curriculum() -> FileResponse:
         return FileResponse(CURRICULUM_PANEL_PATH, headers={"Cache-Control": "no-store"})
 
+    @application.get("/up/plans/{path:path}")
+    def spravochnik_curriculum_plan(path: str) -> FileResponse:
+        return FileResponse(CURRICULUM_PANEL_PATH, headers={"Cache-Control": "no-store"})
+
     @application.get("/catalog-admin")
     def spravochnik_catalog_admin() -> RedirectResponse:
         return RedirectResponse(url="/catalog-admin/groups", status_code=307)

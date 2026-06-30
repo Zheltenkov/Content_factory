@@ -86,6 +86,7 @@ class CurriculumCascadeProject(BaseModel):
     project_id: int
     order: int
     title: str
+    project: UPProject
 
 
 class CurriculumCascadeBlock(BaseModel):
@@ -173,7 +174,12 @@ def get_plan_cascade(plan_id: int, repo: CurriculumCatalogRepo = Depends(get_cur
     for record in repo.list_curriculum_projects(plan_id):
         block = record.project.block or "Без блока"
         blocks.setdefault(block, []).append(
-            CurriculumCascadeProject(project_id=record.project_id, order=record.project.order, title=record.project.title)
+            CurriculumCascadeProject(
+                project_id=record.project_id,
+                order=record.project.order,
+                title=record.project.title,
+                project=record.project,
+            )
         )
     return CurriculumCascadeResponse(
         plan_id=plan_id,

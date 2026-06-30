@@ -90,7 +90,15 @@ def test_curriculum_csv_import_export_and_panel_render() -> None:
     cascade = client.get(f"/curriculum/plans/{plan_id}/cascade")
     assert cascade.status_code == 200
     assert cascade.json()["blocks"][0]["name"] == "Backend"
-    assert cascade.json()["blocks"][0]["projects"][0]["title"] == "REST API"
+    cascade_project = cascade.json()["blocks"][0]["projects"][0]
+    assert cascade_project["title"] == "REST API"
+    # full project payload is embedded so the UP table can render every column
+    assert cascade_project["project"]["title"] == "REST API"
+    assert "outcomes_can" in cascade_project["project"]
+
+    plan_page = client.get(f"/up/plans/{plan_id}")
+    assert plan_page.status_code == 200
+    assert 'id="upProjectsTable"' in plan_page.text
 
     exported = client.get(f"/curriculum/plans/{plan_id}/export.csv")
     assert exported.status_code == 200
@@ -115,6 +123,8 @@ def test_curriculum_csv_import_export_and_panel_render() -> None:
         assert control_id in panel.text
     js = client.get("/static/curriculum/panel.js")
     assert js.status_code == 200
+    assert "renderProjectsTable" in js.text
+    assert "planIdFromLocation" in js.text
     for endpoint in (
         "/curriculum/plans/${planId}/template-proposals",
         "/curriculum/plans/${planId}/template-proposals/generate",

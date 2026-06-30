@@ -3131,6 +3131,48 @@ body.s21-product.methodologist-product .pill.resolution-unresolved,
   border-left-color: #b85c38;
 }
 
+.up-projects-panel {
+  grid-column: 1 / -1;
+}
+
+.up-projects-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius-sm);
+}
+
+.up-projects-table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.up-projects-table th,
+.up-projects-table td {
+  border: 1px solid var(--m-line);
+  padding: 8px 10px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.up-projects-table thead th {
+  background: rgba(255, 255, 255, 0.98);
+  position: sticky;
+  top: 0;
+}
+
+.up-cell-list {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 2px;
+}
+
+.up-edit-btn {
+  white-space: nowrap;
+}
+
 .intake-submit-row {
   align-items: center;
   gap: 14px;

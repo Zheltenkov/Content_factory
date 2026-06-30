@@ -37,7 +37,15 @@ const el = {
   summaryProjects: document.getElementById("curriculumSummaryProjects"),
   summaryHours: document.getElementById("curriculumSummaryHours"),
   summaryStatus: document.getElementById("curriculumSummaryStatus"),
+  upProjectsTable: document.getElementById("upProjectsTable"),
+  upProjectsCount: document.getElementById("upProjectsCount"),
+  upProjectsTitle: document.getElementById("upProjectsTitle"),
 };
+
+function planIdFromLocation() {
+  const match = window.location.pathname.match(/^\/up\/plans\/(\d+)/);
+  return match ? Number(match[1]) : null;
+}
 
 async function request(path, options = {}) {
   const response = await fetch(path, {
@@ -55,6 +63,9 @@ async function request(path, options = {}) {
 async function loadPlans(selectPlanId = null) {
   state.plans = await request("/curriculum/plans");
   renderPlanOptions(selectPlanId);
+  if (!el.planSelect.value && state.plans.length) {
+    el.planSelect.value = String(state.plans[0].plan_id);
+  }
   if (state.plans.length) {
     await loadPlan(Number(el.planSelect.value));
   } else {
@@ -85,6 +96,7 @@ async function loadPlan(planId) {
   state.cascade = cascade;
   state.templateProposals = templateProposals;
   renderBlocks();
+  renderProjectsTable();
   renderTemplateProposals();
   renderSummary();
   await loadSelectedProject();
@@ -127,6 +139,69 @@ function renderProjects() {
     option.textContent = `${project.order}. ${project.title}`;
     el.projectSelect.append(option);
   }
+}
+
+const UP_FORMAT_LABELS = { individual: "индивидуальный", group: "групповой", pair: "парный", workshop: "воркшоп", unknown: "—" };
+
+function allCascadeProjects() {
+  return (state.cascade?.blocks || []).flatMap((block) => block.projects || []);
+}
+
+function renderProjectsTable() {
+  const rows = allCascadeProjects()
+    .map((entry) => ({ project_id: entry.project_id, ...entry.project }))
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  if (el.upProjectsTitle) {
+    el.upProjectsTitle.textContent = state.currentPlan?.title || "Проекты учебного плана";
+  }
+  setText(el.upProjectsCount, rows.length);
+  el.upProjectsTable.innerHTML = `
+    <thead><tr>
+      <th>№</th><th>Тематический блок</th><th>Название проекта</th><th>Краткое описание</th>
+      <th>Знать</th><th>Уметь</th><th>Навыки</th><th>Инструменты</th><th>Необходимое ПО</th>
+      <th>Формат</th><th>Группа</th><th>Астр. часы</th><th>Действия</th>
+    </tr></thead>
+    <tbody>${rows.map(upProjectRow).join("")}</tbody>`;
+}
+
+function upListCell(items) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return "<span class=\"muted\">—</span>";
+  return `<ul class="up-cell-list">${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function upProjectRow(project) {
+  const tools = Array.isArray(project.required_tools) ? project.required_tools.join(", ") : "";
+  const software = Array.isArray(project.required_software) ? project.required_software.join(", ") : "";
+  return `
+    <tr>
+      <td>${escapeHtml(String(project.order ?? ""))}</td>
+      <td><strong>${escapeHtml(project.block || "—")}</strong>${project.block_goal ? `<div class="muted small">${escapeHtml(project.block_goal)}</div>` : ""}</td>
+      <td><strong>${escapeHtml(project.title || "—")}</strong></td>
+      <td class="muted">${escapeHtml(project.description || "—")}</td>
+      <td>${upListCell(project.outcomes_know)}</td>
+      <td>${upListCell(project.outcomes_can)}</td>
+      <td>${upListCell(project.outcomes_skills)}</td>
+      <td class="muted">${escapeHtml(tools || "—")}</td>
+      <td class="muted">${escapeHtml(software || "—")}</td>
+      <td>${escapeHtml(UP_FORMAT_LABELS[project.format] || project.format || "—")}</td>
+      <td>${escapeHtml(String(project.group_size ?? 1))}</td>
+      <td>${escapeHtml(String(project.hours_astro ?? 0))}</td>
+      <td><button type="button" class="action-btn action-btn-secondary up-edit-btn" data-edit-project="${escapeAttr(String(project.project_id))}">Редактировать</button></td>
+    </tr>`;
+}
+
+async function editProjectById(projectId) {
+  const payload = await request(`/curriculum/projects/${projectId}`);
+  state.currentProject = payload;
+  const block = payload.project.block || "";
+  if ([...el.blockSelect.options].some((option) => option.value === block)) {
+    el.blockSelect.value = block;
+    renderProjects();
+  }
+  fillForm(payload.project);
+  el.form.scrollIntoView({ behavior: "smooth", block: "start" });
+  setStatus(`Редактирование: ${payload.project.title}`);
 }
 
 async function loadSelectedProject() {
@@ -352,4 +427,11 @@ el.exportCsv.addEventListener("click", () => {
   if (planId) window.location.href = `/curriculum/plans/${planId}/export.csv`;
 });
 
-loadPlans().catch((error) => setStatus(error.message));
+el.upProjectsTable.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-edit-project]");
+  if (!button) return;
+  const projectId = Number(button.dataset.editProject);
+  if (projectId) editProjectById(projectId).catch((error) => setStatus(error.message));
+});
+
+loadPlans(planIdFromLocation()).catch((error) => setStatus(error.message));
