@@ -14,6 +14,7 @@ from app.modules.reference.service import (
     ReferenceArtifactTemplateStatusPatch,
     ReferenceArtifactTemplateUpsert,
     ReferenceCandidateCompetencyAction,
+    ReferenceCandidateDecision,
     ReferenceCompetencyPatch,
     ReferenceGroupCreate,
     ReferenceGroupSkillCreate,
@@ -259,6 +260,18 @@ def resolve_review(
     if not service.resolve_review(review_id, payload):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="review item not found")
     return {"review_id": review_id, "status": payload.status}
+
+
+@router.post("/candidates/{competency_id}/decision")
+def decide_candidate(
+    competency_id: int,
+    payload: ReferenceCandidateDecision,
+    service: ReferenceService = Depends(get_reference_service),
+) -> dict[str, object]:
+    result = service.decide_candidate(competency_id, payload)
+    if result.get("status") == "missing":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="competency candidate not found")
+    return result
 
 
 @router.get("/candidate-competencies")

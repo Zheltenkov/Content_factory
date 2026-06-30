@@ -398,6 +398,31 @@ def test_intake_job_runs_pipeline_into_reference_and_curriculum() -> None:
     assert client.get("/curriculum/plans").json()[0]["plan_id"] == job["result_payload"]["curriculum_plan"]["plan_id"]
 
 
+def test_intake_card_decision_resolves_review_and_sets_status() -> None:
+    client, _repo = _client()
+    created = client.post(
+        "/intake/jobs",
+        json={"brief_text": "Подготовить аналитика: SQL, дашборды, A/B-тесты, отчётность.", "use_llm": False},
+    )
+    assert created.status_code == 201, created.text
+    cards = created.json()["result_payload"]["saved_items"]
+    open_before = len(client.get("/reference/reviews?status=open&entity_type=competency").json())
+    assert open_before >= 1
+
+    accept_id = cards[0]["competency_id"]
+    accepted = client.post(f"/reference/candidates/{accept_id}/decision", json={"decision": "accept"})
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["status"] == "accepted"
+    assert accepted.json()["reviews_resolved"] >= 1
+
+    rejected = client.post(f"/reference/candidates/{accept_id}/decision", json={"decision": "reject"})
+    assert rejected.json()["status"] == "rejected"
+
+    open_after = len(client.get("/reference/reviews?status=open&entity_type=competency").json())
+    assert open_after < open_before
+    assert client.post("/reference/candidates/999999/decision", json={"decision": "accept"}).status_code == 404
+
+
 def test_create_group_adds_empty_competency_without_review() -> None:
     client, _repo = _client()
 

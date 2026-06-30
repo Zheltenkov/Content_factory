@@ -24,6 +24,12 @@ ArtifactScopeType = Literal["taxonomy_node", "skill_group", "coverage_area", "an
 ArtifactTemplateStatus = Literal["active", "draft", "deprecated"]
 ArchiveKind = Literal["group", "skill", "indicator"]
 
+_DECISION_NOTES = {
+    "accept": "Принят методологом из карточек брифа.",
+    "link": "Покрыт существующим skill: кандидат снят с публикации.",
+    "reject": "Отклонён методологом из карточек брифа.",
+}
+
 
 class ReferenceService:
     """Application-layer adapter for catalog read/edit workflows."""
@@ -138,6 +144,27 @@ class ReferenceService:
 
     def resolve_review(self, review_id: int, patch: "ReferenceReviewPatch") -> bool:
         return self.repo.resolve_review_item(review_id, status=patch.status, note=patch.note)
+
+    def decide_candidate(self, competency_id: int, payload: "ReferenceCandidateDecision") -> dict[str, object]:
+        """Apply an intake skill-card decision: accept (keep), link (covered), reject."""
+        accepted = payload.decision == "accept"
+        result = self.repo.set_competency_review_status(competency_id, accepted=accepted)
+        if result.get("status") == "missing":
+            return result
+        review_status: Literal["resolved", "ignored"] = "ignored" if payload.decision == "reject" else "resolved"
+        note = payload.note or _DECISION_NOTES[payload.decision]
+        resolved = 0
+        for item in self.repo.list_review_queue(status="open", entity_type="competency", limit=500):
+            if int(cast("int", item["entity_id"])) == competency_id and self.repo.resolve_review_item(
+                int(cast("int", item["id"])), status=review_status, note=note
+            ):
+                resolved += 1
+        return {
+            "status": result["status"],
+            "competency_id": competency_id,
+            "decision": payload.decision,
+            "reviews_resolved": resolved,
+        }
 
     def candidate_competencies(self, *, limit: int = 100) -> dict[str, object]:
         return self.repo.list_candidate_competencies(limit=limit)
@@ -346,6 +373,15 @@ class ReferenceReviewPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: Literal["resolved", "ignored", "open"]
+    note: str = ""
+
+
+class ReferenceCandidateDecision(BaseModel):
+    """Intake skill-card decision: accept (keep new), link (covered by existing), reject."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["accept", "link", "reject"]
     note: str = ""
 
 

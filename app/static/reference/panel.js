@@ -725,6 +725,64 @@ function renderSkillCards(items) {
   el.jobSkillCards.innerHTML = cards.map(skillCardMarkup).join("");
 }
 
+const CARD_DECISION_RESULT = {
+  accept: { label: "Принято", status: "accepted", reco: "Кандидат принят и используется в каталоге/DAG." },
+  link: { label: "Покрыт существующим", status: "rejected", reco: "Кандидат снят: покрыт существующим skill." },
+  reject: { label: "Отклонено", status: "rejected", reco: "Кандидат отклонён методологом." },
+};
+
+async function decideCard(card, action) {
+  const actions = card.querySelector(".skill-card-actions");
+  const competencyId = Number(actions?.dataset.competency);
+  if (!competencyId) {
+    setStatus("У карточки нет competency_id для решения");
+    return;
+  }
+  card.classList.add("is-deciding");
+  try {
+    const result = await request(`/reference/candidates/${competencyId}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision: action }),
+    });
+    applyCardDecision(card, action, result);
+    setStatus(`Решение применено: ${CARD_DECISION_RESULT[action].label} (закрыто решений: ${result.reviews_resolved || 0})`);
+    await refreshIntakeSummary();
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    card.classList.remove("is-deciding");
+  }
+}
+
+function applyCardDecision(card, action, result) {
+  const view = CARD_DECISION_RESULT[action];
+  card.classList.add("is-decided");
+  card.dataset.decision = result.status || view.status;
+  const statusBadge = card.querySelector(".skill-card-metrics .status-badge");
+  if (statusBadge) {
+    statusBadge.textContent = view.label;
+    statusBadge.classList.toggle("warning", view.status !== "accepted");
+  }
+  const reco = card.querySelector(".skill-card-reco");
+  if (reco) {
+    reco.className = "skill-card-reco sim-strong";
+    reco.innerHTML = `<strong>${escapeHtml(view.label)}</strong><span class="small muted">${escapeHtml(view.reco)}</span>`;
+  }
+  card.querySelectorAll(".skill-card-actions button").forEach((button) => {
+    button.disabled = true;
+    button.classList.toggle("is-chosen", button.dataset.cardAction === action);
+  });
+}
+
+async function refreshIntakeSummary() {
+  try {
+    const summary = await request("/reference/summary");
+    if (el.summaryOpenReviews) el.summaryOpenReviews.textContent = summary.open_reviews ?? 0;
+  } catch {
+    /* summary refresh is best-effort */
+  }
+}
+
 function skillCardMarkup(item) {
   const hint = item.similarity_hint || {};
   const action = item.recommended_action || {};
@@ -745,10 +803,10 @@ function skillCardMarkup(item) {
           <strong>${escapeHtml(item.name)}</strong>
           ${item.bloom ? `<span class="pill bloom-pill">Блум: ${escapeHtml(item.bloom)}</span>` : ""}
         </div>
-        <div class="skill-card-actions" role="group" aria-label="Решение методолога">
-          <a class="card-act create" title="Создать новый skill" href="/catalog-admin/skills/${skillHref}">＋</a>
-          <a class="card-act link" title="Привязать к каталогу" href="/reviews?status=open">⟷</a>
-          <a class="card-act reject" title="Открыть в очереди решений" href="/reviews?status=open">✕</a>
+        <div class="skill-card-actions" role="group" aria-label="Решение методолога" data-competency="${escapeHtml(String(item.competency_id ?? ""))}">
+          <button type="button" class="card-act create" data-card-action="accept" title="Принять новый skill">＋</button>
+          <button type="button" class="card-act link" data-card-action="link" title="Покрыть существующим (снять кандидата)">⟷</button>
+          <button type="button" class="card-act reject" data-card-action="reject" title="Отклонить кандидата">✕</button>
         </div>
       </header>
       <p class="skill-card-meta small muted">${escapeHtml(item.group || "Без группы")}${tools}</p>
@@ -2042,6 +2100,13 @@ el.jobNextStepActions.addEventListener("click", (event) => {
   event.preventDefault();
   el.briefText.focus();
   setStatus("Сначала добавьте текст брифа или выберите документ");
+});
+
+el.jobSkillCards.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-card-action]");
+  if (!button || button.disabled) return;
+  const card = button.closest(".intake-skill-card");
+  if (card) decideCard(card, button.dataset.cardAction);
 });
 
 setListMode(state.mode);
