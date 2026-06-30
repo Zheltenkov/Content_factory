@@ -232,6 +232,7 @@ class IntakeService:
                 "saved_items": saved_items,
                 "review_count": sum(1 for item in saved if item.created_review),
                 "council": council_report,
+                "dag": _dag_summary(result.dag_payload),
                 "curriculum_plan": {"plan_id": plan.plan_id, "project_count": plan.project_count},
                 "reports": result.reports,
             }
@@ -406,6 +407,17 @@ class IntakeJobCreate(BaseModel):
     file_path: str | None = None
     use_council: bool = True
     use_llm: bool = False
+
+
+def _dag_summary(dag_payload: dict[str, Any]) -> dict[str, Any]:
+    """Compact prerequisite-graph payload for the intake job page (waves + edges)."""
+    return {
+        "nodes": int(dag_payload.get("nodes", 0) or 0),
+        "edges": int(dag_payload.get("edges", 0) or 0),
+        "acyclic": bool(dag_payload.get("acyclic", True)),
+        "waves": dag_payload.get("waves", []),
+        "final_edges": dag_payload.get("final_edges", []),
+    }
 
 
 def _adjudication_card(competency: Competency, link: CompetencyLinkResult) -> dict[str, Any]:

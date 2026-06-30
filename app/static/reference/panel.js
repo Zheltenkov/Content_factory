@@ -153,6 +153,10 @@ const el = {
   jobSkillCardsCard: document.getElementById("jobSkillCardsCard"),
   jobSkillCardsPill: document.getElementById("jobSkillCardsPill"),
   jobSkillCards: document.getElementById("jobSkillCards"),
+  jobDagCard: document.getElementById("jobDagCard"),
+  jobDagAcyclic: document.getElementById("jobDagAcyclic"),
+  jobDagCounts: document.getElementById("jobDagCounts"),
+  jobDagMap: document.getElementById("jobDagMap"),
   jobPipelineResultCard: document.getElementById("jobPipelineResultCard"),
   jobPipelineResult: document.getElementById("jobPipelineResult"),
   jobWorkflowSteps: document.getElementById("jobWorkflowSteps"),
@@ -471,6 +475,7 @@ function renderCurrentIntakeJob() {
   renderCatalogState(stateView.catalogState);
   renderCreatedItems(stateView.createdItems);
   renderSkillCards(stateView.createdItems);
+  renderDag(stateView.dag);
   renderPipelineResult(stateView.pipelineResult);
   renderWorkflowSteps(stateView.workflowSteps);
   if (job) {
@@ -495,6 +500,7 @@ function buildIntakeWorkspaceState(job) {
       catalogState: [],
       createdItems: [],
       pipelineResult: [],
+      dag: null,
       workflowSteps: buildWorkflowSteps(null),
     };
   }
@@ -519,6 +525,7 @@ function buildIntakeWorkspaceState(job) {
     ],
     createdItems: savedItems,
     pipelineResult: buildPipelineResult(job, result, failed),
+    dag: result.dag || null,
     workflowSteps: buildWorkflowSteps(job),
   };
 }
@@ -748,6 +755,103 @@ function skillCardMarkup(item) {
       </div>
       ${action.label ? `<div class="skill-card-reco sim-${escapeHtml(hintClass)}"><strong>${escapeHtml(action.label)}</strong><span class="small muted">${escapeHtml(action.detail || "")}</span></div>` : ""}
     </article>`;
+}
+
+function renderDag(dag) {
+  const waves = dag && Array.isArray(dag.waves) ? dag.waves : [];
+  const hasGraph = Boolean(dag) && Number(dag.nodes || 0) > 0 && waves.length > 0;
+  el.jobDagCard.hidden = !hasGraph;
+  if (!hasGraph) {
+    el.jobDagMap.innerHTML = "";
+    return;
+  }
+  el.jobDagAcyclic.textContent = dag.acyclic ? "Ацикличен: да" : "Есть циклы";
+  el.jobDagAcyclic.classList.toggle("warning", !dag.acyclic);
+  el.jobDagCounts.innerHTML = [
+    ["Узлов", dag.nodes],
+    ["Рёбер", dag.edges],
+    ["Волн", waves.length],
+  ]
+    .map(([label, value]) => `<span class="pill"><strong>${escapeHtml(String(value))}</strong> ${escapeHtml(label)}</span>`)
+    .join("");
+  el.jobDagMap.innerHTML = dagMapSvg(dag, waves);
+  bindDagHover();
+}
+
+function dagMapSvg(dag, waves) {
+  const COL = 210;
+  const ROW = 52;
+  const NODE_W = 170;
+  const NODE_H = 34;
+  const PAD = 14;
+  const pos = new Map();
+  let maxRows = 0;
+  waves.forEach((wave, wi) => {
+    maxRows = Math.max(maxRows, wave.length);
+    wave.forEach((node, ri) => pos.set(node.id, { x: PAD + wi * COL, y: PAD + ri * ROW, node }));
+  });
+  const width = PAD * 2 + (waves.length - 1) * COL + NODE_W;
+  const height = PAD * 2 + Math.max(maxRows - 1, 0) * ROW + NODE_H;
+  const edges = (Array.isArray(dag.final_edges) ? dag.final_edges : [])
+    .map((edge) => {
+      const a = pos.get(edge.source_id);
+      const b = pos.get(edge.target_id);
+      if (!a || !b) return "";
+      const x1 = a.x + NODE_W;
+      const y1 = a.y + NODE_H / 2;
+      const x2 = b.x;
+      const y2 = b.y + NODE_H / 2;
+      const soft = edge.relation_type === "soft" ? " dag-edge-soft" : "";
+      return `<path class="dag-edge${soft}" data-from="${escapeHtml(String(edge.source_id))}" data-to="${escapeHtml(String(edge.target_id))}" d="M${x1},${y1} C${x1 + 42},${y1} ${x2 - 42},${y2} ${x2},${y2}" />`;
+    })
+    .join("");
+  const nodes = [...pos.values()]
+    .map(({ x, y, node }) => `
+      <g class="dag-node" data-node="${escapeHtml(String(node.id))}" transform="translate(${x},${y})">
+        <rect width="${NODE_W}" height="${NODE_H}" rx="8" />
+        <text x="10" y="${NODE_H / 2 + 4}">${escapeHtml(truncateText(node.name, 24))}</text>
+        <title>${escapeHtml(node.name)}</title>
+      </g>`)
+    .join("");
+  return `<svg viewBox="0 0 ${width} ${height}" class="dag-svg" preserveAspectRatio="xMinYMin meet" role="img" aria-label="Граф пререквизитов">${edges}${nodes}</svg>`;
+}
+
+function bindDagHover() {
+  const svg = el.jobDagMap.querySelector(".dag-svg");
+  if (!svg) return;
+  svg.querySelectorAll(".dag-node").forEach((nodeEl) => {
+    const id = nodeEl.getAttribute("data-node");
+    nodeEl.addEventListener("mouseenter", () => setDagHighlight(svg, id));
+    nodeEl.addEventListener("mouseleave", () => clearDagHighlight(svg));
+  });
+}
+
+function setDagHighlight(svg, id) {
+  svg.classList.add("dag-dim");
+  svg.querySelectorAll(".dag-node").forEach((n) => n.classList.toggle("active", n.getAttribute("data-node") === id));
+  svg.querySelectorAll(".dag-edge").forEach((edgeEl) => {
+    const linked = edgeEl.getAttribute("data-from") === id || edgeEl.getAttribute("data-to") === id;
+    edgeEl.classList.toggle("active", linked);
+    if (linked) {
+      const other = edgeEl.getAttribute("data-from") === id ? edgeEl.getAttribute("data-to") : edgeEl.getAttribute("data-from");
+      const neighbour = svg.querySelector(`.dag-node[data-node="${cssEscape(other)}"]`);
+      if (neighbour) neighbour.classList.add("active");
+    }
+  });
+}
+
+function clearDagHighlight(svg) {
+  svg.classList.remove("dag-dim");
+  svg.querySelectorAll(".active").forEach((node) => node.classList.remove("active"));
+}
+
+function truncateText(value, max) {
+  const text = String(value || "");
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function cssEscape(value) {
+  return String(value).replace(/["\\]/g, "\\$&");
 }
 
 function renderPipelineResult(items) {

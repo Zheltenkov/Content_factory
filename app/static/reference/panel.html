@@ -219,6 +219,16 @@
                 <div class="intake-skill-card-grid" id="jobSkillCards"></div>
               </section>
 
+              <section class="workspace-control-card dag-summary" id="jobDagCard" hidden>
+                <div class="summary-head">
+                  <h2>Граф пререквизитов</h2>
+                  <span class="pill" id="jobDagAcyclic">—</span>
+                </div>
+                <p class="small muted">Колонки — preview-волны зависимостей: какие навыки можно изучать после закрытия пререквизитов. Наведи на узел, чтобы подсветить его связи.</p>
+                <div class="chips-row compact-summary-row" id="jobDagCounts"></div>
+                <div class="dag-map" id="jobDagMap"></div>
+              </section>
+
               <section class="workspace-control-card catalog-apply-summary" id="jobPipelineResultCard" hidden>
                 <div class="summary-head">
                   <h2>Результат pipeline</h2>

@@ -366,6 +366,11 @@ def test_intake_job_runs_pipeline_into_reference_and_curriculum() -> None:
     assert card["similarity_hint"]["class"] in {"strong", "medium", "weak", "neutral"}
     assert card["recommended_action"]["code"]
     assert "council" in job["result_payload"]
+    dag = job["result_payload"]["dag"]
+    assert dag["nodes"] >= 1
+    assert isinstance(dag["waves"], list) and dag["waves"]
+    assert isinstance(dag["final_edges"], list)
+    assert dag["acyclic"] in {True, False}
     assert job["result_payload"]["curriculum_plan"]["plan_id"]
     assert client.get(f"/intake/jobs/{job['id']}/status").json()["status"] == "succeeded"
     detail_page = client.get(f"/intake/jobs/{job['id']}")
@@ -377,6 +382,8 @@ def test_intake_job_runs_pipeline_into_reference_and_curriculum() -> None:
     assert "/intake/jobs/${currentJobId}/status" in panel_js
     assert "renderSkillCards" in panel_js
     assert "recommended_action" in panel_js
+    assert "renderDag" in panel_js and "dag-svg" in panel_js
+    assert 'id="jobDagMap"' in detail_page.text
     assert client.get("/reference/summary").json()["skills"] >= 3
     assert client.get("/curriculum/plans").json()[0]["plan_id"] == job["result_payload"]["curriculum_plan"]["plan_id"]
 
