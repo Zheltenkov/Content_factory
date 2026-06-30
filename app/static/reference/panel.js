@@ -150,6 +150,9 @@ const el = {
   jobCreatedItemsCard: document.getElementById("jobCreatedItemsCard"),
   jobCreatedItemsPill: document.getElementById("jobCreatedItemsPill"),
   jobCreatedItems: document.getElementById("jobCreatedItems"),
+  jobSkillCardsCard: document.getElementById("jobSkillCardsCard"),
+  jobSkillCardsPill: document.getElementById("jobSkillCardsPill"),
+  jobSkillCards: document.getElementById("jobSkillCards"),
   jobPipelineResultCard: document.getElementById("jobPipelineResultCard"),
   jobPipelineResult: document.getElementById("jobPipelineResult"),
   jobWorkflowSteps: document.getElementById("jobWorkflowSteps"),
@@ -467,6 +470,7 @@ function renderCurrentIntakeJob() {
   renderBlockers(stateView.blockers);
   renderCatalogState(stateView.catalogState);
   renderCreatedItems(stateView.createdItems);
+  renderSkillCards(stateView.createdItems);
   renderPipelineResult(stateView.pipelineResult);
   renderWorkflowSteps(stateView.workflowSteps);
   if (job) {
@@ -680,6 +684,68 @@ function renderCreatedItems(items) {
         <small>${item.created_review ? "review queue" : "accepted"} · ${item.indicator_count || 0} инд.</small>
       </a>`)
     .join("");
+}
+
+const RESOLUTION_LABELS = {
+  matched: "Покрывает",
+  alias: "Синоним",
+  fuzzy: "Почти эквивалент",
+  new: "Новый",
+  unresolved: "Без резолва",
+};
+
+const CARD_STATUS_LABELS = {
+  accepted: "Принято",
+  needs_review: "На проверке",
+  rejected: "Отклонено",
+  candidate: "Кандидат",
+  superseded: "Заменён",
+};
+
+function renderSkillCards(items) {
+  const cards = items.filter((item) => item && item.name);
+  el.jobSkillCardsCard.hidden = !cards.length;
+  el.jobSkillCardsPill.textContent = String(cards.length);
+  el.jobSkillCards.innerHTML = cards.map(skillCardMarkup).join("");
+}
+
+function skillCardMarkup(item) {
+  const hint = item.similarity_hint || {};
+  const action = item.recommended_action || {};
+  const hintClass = hint.class || "neutral";
+  const nearest = item.nearest_name
+    ? `<span class="skill-card-nearest">Ближайший в каталоге: <a href="/catalog-admin/skills/${item.skill_id}">${escapeHtml(item.nearest_name)}</a></span>`
+    : "";
+  const council = item.council_agreement === null || item.council_agreement === undefined
+    ? ""
+    : ` · жюри <b>${escapeHtml(String(item.council_agreement))}</b>`;
+  const tools = Array.isArray(item.tools) && item.tools.length ? ` · ${escapeHtml(item.tools.join(", "))}` : "";
+  return `
+    <article class="intake-skill-card" data-skill="${item.skill_id}">
+      <header class="skill-card-head">
+        <div class="skill-card-title">
+          <strong>${escapeHtml(item.name)}</strong>
+          ${item.bloom ? `<span class="pill bloom-pill">Блум: ${escapeHtml(item.bloom)}</span>` : ""}
+        </div>
+        <div class="skill-card-actions" role="group" aria-label="Решение методолога">
+          <a class="card-act create" title="Создать новый skill" href="/catalog-admin/skills/${item.skill_id}">＋</a>
+          <a class="card-act link" title="Привязать к каталогу" href="/reviews?status=open">⟷</a>
+          <a class="card-act reject" title="Открыть в очереди решений" href="/reviews?status=open">✕</a>
+        </div>
+      </header>
+      <p class="skill-card-meta small muted">${escapeHtml(item.group || "Без группы")}${tools}</p>
+      <div class="chips-row skill-card-chips">
+        <span class="pill resolution-${escapeHtml(item.resolution || "unresolved")}">${escapeHtml(RESOLUTION_LABELS[item.resolution] || item.resolution || "—")}</span>
+        <span class="pill sim-${escapeHtml(hintClass)}">${escapeHtml(hint.label || "—")}</span>
+        ${nearest}
+      </div>
+      <div class="skill-card-metrics small">
+        похожесть <b>${escapeHtml(item.match_score ?? "—")}</b> · новизна <b>${escapeHtml(item.novelty_score ?? "—")}</b>
+        · уверенность <b>${escapeHtml(String(item.confidence ?? "—"))}</b>${council}
+        · <span class="status-badge ${item.status === "needs_review" ? "warning" : ""}">${escapeHtml(CARD_STATUS_LABELS[item.status] || item.status || "—")}</span>
+      </div>
+      ${action.label ? `<div class="skill-card-reco sim-${escapeHtml(hintClass)}"><strong>${escapeHtml(action.label)}</strong><span class="small muted">${escapeHtml(action.detail || "")}</span></div>` : ""}
+    </article>`;
 }
 
 function renderPipelineResult(items) {

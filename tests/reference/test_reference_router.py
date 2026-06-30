@@ -357,14 +357,26 @@ def test_intake_job_runs_pipeline_into_reference_and_curriculum() -> None:
     assert job["brief_id"]
     assert job["result_payload"]["competency_count"] >= 3
     assert job["result_payload"]["saved_items"]
-    assert job["result_payload"]["saved_items"][0]["name"]
+    card = job["result_payload"]["saved_items"][0]
+    assert card["name"]
+    # adjudication engine surfaces per-card catalog-match + council metrics
+    assert card["resolution"] in {"matched", "alias", "fuzzy", "new", "unresolved"}
+    assert 0.0 <= float(card["confidence"]) <= 1.0
+    assert card["match_score"] is not None and card["novelty_score"] is not None
+    assert card["similarity_hint"]["class"] in {"strong", "medium", "weak", "neutral"}
+    assert card["recommended_action"]["code"]
+    assert "council" in job["result_payload"]
     assert job["result_payload"]["curriculum_plan"]["plan_id"]
     assert client.get(f"/intake/jobs/{job['id']}/status").json()["status"] == "succeeded"
     detail_page = client.get(f"/intake/jobs/{job['id']}")
     assert detail_page.status_code == 200
     assert "text/html" in detail_page.headers["content-type"]
     assert 'id="intakeWorkspace"' in detail_page.text
-    assert "/intake/jobs/${currentJobId}/status" in client.get("/static/reference/panel.js").text
+    assert 'id="jobSkillCards"' in detail_page.text
+    panel_js = client.get("/static/reference/panel.js").text
+    assert "/intake/jobs/${currentJobId}/status" in panel_js
+    assert "renderSkillCards" in panel_js
+    assert "recommended_action" in panel_js
     assert client.get("/reference/summary").json()["skills"] >= 3
     assert client.get("/curriculum/plans").json()[0]["plan_id"] == job["result_payload"]["curriculum_plan"]["plan_id"]
 

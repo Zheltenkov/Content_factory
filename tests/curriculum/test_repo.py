@@ -31,6 +31,29 @@ def test_catalog_repo_crud_alias_and_resolve() -> None:
     assert repo.get_skill(skill.skill_id).status == "deprecated"
 
 
+def test_resolve_competencies_batch_matches_and_carries_nearest() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    create_catalog_schema(engine)
+    repo = CurriculumCatalogRepo(engine)
+    sql_skill = repo.upsert_skill("Написание SQL-запросов", aliases=["SQL-запросы"])
+
+    matched, brand_new = repo.resolve_competencies(
+        [
+            _competency("C1", "Написание SQL-запросов"),
+            _competency("C2", "Управление продуктовой стратегией"),
+        ]
+    )
+
+    assert matched.resolution == "matched"
+    assert matched.catalog_id == sql_skill.skill_id
+    assert matched.metadata.get("nearest_name") == "Написание SQL-запросов"
+
+    assert brand_new.resolution == "new"
+    assert brand_new.catalog_id is None
+    # nearest hint still surfaces the closest catalog skill for the methodologist
+    assert brand_new.metadata.get("nearest_name") == "Написание SQL-запросов"
+
+
 def test_catalog_repo_links_competency_indicators_and_review_queue() -> None:
     engine = create_engine("sqlite:///:memory:")
     create_catalog_schema(engine)

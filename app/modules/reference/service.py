@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.modules.curriculum.repo import CatalogSkill, CurriculumCatalogRepo
+from app.core.models import Competency
+from app.modules.curriculum.repo import CatalogSkill, CompetencyLinkResult, CurriculumCatalogRepo
+from app.modules.curriculum.stages import stage_adjudicate
 from app.modules.curriculum.stages.pipeline import run_catalog_pipeline
+from app.modules.reference.adjudication import (
+    build_candidate_recommended_action,
+    build_similarity_hint,
+    format_catalog_similarity,
+)
 
 CatalogStatus = Literal["active", "candidate", "deprecated"]
 ReviewStatus = Literal["open", "resolved", "ignored"]
@@ -200,7 +207,7 @@ class IntakeService:
             file_path=payload.file_path,
             use_council=payload.use_council,
         )
-        job_id = int(job["id"])
+        job_id = int(cast("int", job["id"]))
         try:
             self.repo.update_intake_job(
                 job_id,
@@ -211,27 +218,20 @@ class IntakeService:
             )
             result = run_catalog_pipeline(brief, use_llm=payload.use_llm)
             brief_id = self.repo.create_profile_brief(brief, spec=result.spec)
-            saved = [self.repo.save_competency(item, source_note=f"intake:{brief_id}") for item in result.competencies]
+            resolved = self.repo.resolve_competencies(list(result.competencies))
+            stage_adjudicate.score_confidences(resolved, result.evidence_sources)
+            council_report = stage_adjudicate.run_council(resolved, use_council=payload.use_council)
+            saved = [self.repo.save_competency(item, source_note=f"intake:{brief_id}") for item in resolved]
             plan = self.repo.save_curriculum_plan(result.up, source_policy="intake", author_ref=f"intake:{job_id}")
-            saved_items = [
-                {
-                    "skill_id": link.skill_id,
-                    "competency_id": link.competency_id,
-                    "name": competency.canonical_name,
-                    "group": competency.group or competency.coverage_area,
-                    "created_competency": link.created_competency,
-                    "created_review": link.created_review,
-                    "indicator_count": len(competency.indicators),
-                }
-                for competency, link in zip(result.competencies, saved)
-            ]
+            saved_items = [_adjudication_card(competency, link) for competency, link in zip(resolved, saved)]
             result_payload = {
                 "brief_id": brief_id,
                 "spec": result.spec,
-                "competency_count": len(result.competencies),
+                "competency_count": len(resolved),
                 "saved_skill_ids": [item.skill_id for item in saved],
                 "saved_items": saved_items,
                 "review_count": sum(1 for item in saved if item.created_review),
+                "council": council_report,
                 "curriculum_plan": {"plan_id": plan.plan_id, "project_count": plan.project_count},
                 "reports": result.reports,
             }
@@ -406,6 +406,38 @@ class IntakeJobCreate(BaseModel):
     file_path: str | None = None
     use_council: bool = True
     use_llm: bool = False
+
+
+def _adjudication_card(competency: Competency, link: CompetencyLinkResult) -> dict[str, Any]:
+    """Build one intake skill-card with catalog-match and council adjudication fields."""
+    score_100 = (competency.match_score or 0.0) * 100.0
+    similarity, novelty = format_catalog_similarity(score_100)
+    nearest_name = competency.metadata.get("nearest_name")
+    has_nearest = bool(nearest_name)
+    reasons = competency.metadata.get("reasons")
+    return {
+        "skill_id": link.skill_id,
+        "competency_id": link.competency_id,
+        "name": competency.canonical_name,
+        "group": competency.group or competency.coverage_area,
+        "source_name": competency.source_name,
+        "bloom": competency.bloom_level,
+        "tools": list(competency.tools),
+        "resolution": competency.resolution,
+        "status": competency.status,
+        "confidence": round(competency.confidence, 2),
+        "council_agreement": competency.metadata.get("council_agreement"),
+        "match_score": similarity,
+        "novelty_score": novelty,
+        "nearest_name": nearest_name,
+        "similarity_hint": build_similarity_hint(score_100, competency.resolution, has_nearest, reasons),
+        "recommended_action": build_candidate_recommended_action(
+            score_100, competency.resolution, has_nearest, str(nearest_name or ""), reasons, competency.status
+        ),
+        "created_competency": link.created_competency,
+        "created_review": link.created_review,
+        "indicator_count": len(competency.indicators),
+    }
 
 
 def skill_payload(skill: CatalogSkill) -> dict[str, Any]:

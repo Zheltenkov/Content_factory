@@ -606,22 +606,17 @@ class CurriculumCatalogRepo:
             return True
 
     def resolve_competency(self, item: Competency) -> Competency:
-        names = _candidate_names(item)
-        normalized_names = [normalize_catalog_key(name) for name in names if normalize_catalog_key(name)]
         with self._connect() as con:
-            by_norm, alias_norm, fuzzy_index = self._load_resolution_index(con)
-            for normalized in normalized_names:
-                if normalized in by_norm:
-                    return _with_resolution(item, by_norm[normalized], "matched", 1.0)
-            for normalized in normalized_names:
-                if normalized in alias_norm:
-                    return _with_resolution(item, alias_norm[normalized], "alias", 1.0)
-            best = _best_fuzzy_match(normalized_names, fuzzy_index)
-            if best and best[1] >= FUZZY_MATCH_MIN:
-                return _with_resolution(item, best[2], "fuzzy", round(best[1], 4))
-            payload = item.model_dump()
-            payload.update(resolution="new", match_score=round(best[1], 4) if best else 0.0)
-            return Competency.model_validate(payload)
+            index = self._load_resolution_index(con)
+            return _resolve_one(item, index)
+
+    def resolve_competencies(self, items: list[Competency]) -> list[Competency]:
+        """Resolve a batch of candidates against the catalog with one index load."""
+        if not items:
+            return []
+        with self._connect() as con:
+            index = self._load_resolution_index(con)
+            return [_resolve_one(item, index) for item in items]
 
     def save_competency(self, item: Competency, *, source_note: str = "curriculum_repo") -> CompetencyLinkResult:
         skill = self.upsert_skill(item.canonical_name, aliases=item.aliases, alias_source=source_note)
@@ -2890,13 +2885,43 @@ def _candidate_names(item: Competency) -> list[str]:
 
 def _with_resolution(item: Competency, skill: CatalogSkill, resolution: str, score: float) -> Competency:
     payload = item.model_dump()
+    metadata = {**payload.get("metadata", {}), "nearest_name": skill.canonical_name, "nearest_skill_id": skill.skill_id}
     payload.update(
         catalog_id=skill.skill_id,
         canonical_name=skill.canonical_name,
         resolution=resolution,
         match_score=score,
         aliases=list(dict.fromkeys([item.canonical_name, *item.aliases, *skill.aliases])),
+        metadata=metadata,
     )
+    return Competency.model_validate(payload)
+
+
+def _resolve_one(
+    item: Competency,
+    index: tuple[dict[str, CatalogSkill], dict[str, CatalogSkill], dict[str, CatalogSkill]],
+) -> Competency:
+    by_norm, alias_norm, fuzzy_index = index
+    normalized_names = [normalize_catalog_key(name) for name in _candidate_names(item) if normalize_catalog_key(name)]
+    for normalized in normalized_names:
+        if normalized in by_norm:
+            return _with_resolution(item, by_norm[normalized], "matched", 1.0)
+    for normalized in normalized_names:
+        if normalized in alias_norm:
+            return _with_resolution(item, alias_norm[normalized], "alias", 1.0)
+    best = _best_fuzzy_match(normalized_names, fuzzy_index)
+    if best and best[1] >= FUZZY_MATCH_MIN:
+        return _with_resolution(item, best[2], "fuzzy", round(best[1], 4))
+    payload = item.model_dump()
+    # "new": no catalog link, but still surface the closest skill as a methodologist hint.
+    if best:
+        payload["metadata"] = {
+            **payload.get("metadata", {}),
+            "nearest_name": best[2].canonical_name,
+            "nearest_skill_id": best[2].skill_id,
+            "nearest_match_score": round(best[1], 4),
+        }
+    payload.update(resolution="new", match_score=round(best[1], 4) if best else 0.0)
     return Competency.model_validate(payload)
 
 
