@@ -3131,6 +3131,52 @@ body.s21-product.methodologist-product .pill.resolution-unresolved,
   border-left-color: #b85c38;
 }
 
+.draft-up-section-label {
+  margin-top: 6px;
+}
+
+.draft-up-summary .data-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius-sm);
+}
+
+.draft-up-summary .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.draft-up-outcomes {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 2px;
+}
+
+.draft-up-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-content: flex-start;
+}
+
+.draft-up-skills .pill {
+  width: auto;
+  flex: none;
+}
+
+.pill.skill-role-supporting,
+.pill.skill-role-reinforcement {
+  background: rgba(196, 154, 38, 0.16);
+  color: #8a6a16;
+}
+
+.pill.skill-role-assessment {
+  background: rgba(31, 138, 112, 0.14);
+  color: #176a55;
+}
+
 .dag-map {
   overflow-x: auto;
   border: 1px solid var(--m-line);

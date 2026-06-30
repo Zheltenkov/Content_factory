@@ -157,6 +157,11 @@ const el = {
   jobDagAcyclic: document.getElementById("jobDagAcyclic"),
   jobDagCounts: document.getElementById("jobDagCounts"),
   jobDagMap: document.getElementById("jobDagMap"),
+  jobDraftUpCard: document.getElementById("jobDraftUpCard"),
+  jobDraftUpActions: document.getElementById("jobDraftUpActions"),
+  jobDraftUpCounts: document.getElementById("jobDraftUpCounts"),
+  jobUpBlocksTable: document.getElementById("jobUpBlocksTable"),
+  jobUpProjectsTable: document.getElementById("jobUpProjectsTable"),
   jobPipelineResultCard: document.getElementById("jobPipelineResultCard"),
   jobPipelineResult: document.getElementById("jobPipelineResult"),
   jobWorkflowSteps: document.getElementById("jobWorkflowSteps"),
@@ -476,6 +481,7 @@ function renderCurrentIntakeJob() {
   renderCreatedItems(stateView.createdItems);
   renderSkillCards(stateView.createdItems);
   renderDag(stateView.dag);
+  renderDraftUp(stateView.draftUp);
   renderPipelineResult(stateView.pipelineResult);
   renderWorkflowSteps(stateView.workflowSteps);
   if (job) {
@@ -501,6 +507,7 @@ function buildIntakeWorkspaceState(job) {
       createdItems: [],
       pipelineResult: [],
       dag: null,
+      draftUp: null,
       workflowSteps: buildWorkflowSteps(null),
     };
   }
@@ -526,6 +533,7 @@ function buildIntakeWorkspaceState(job) {
     createdItems: savedItems,
     pipelineResult: buildPipelineResult(job, result, failed),
     dag: result.dag || null,
+    draftUp: planId ? plan : null,
     workflowSteps: buildWorkflowSteps(job),
   };
 }
@@ -852,6 +860,68 @@ function truncateText(value, max) {
 
 function cssEscape(value) {
   return String(value).replace(/["\\]/g, "\\$&");
+}
+
+function renderDraftUp(plan) {
+  const blocks = plan && Array.isArray(plan.blocks) ? plan.blocks : [];
+  const projects = plan && Array.isArray(plan.projects) ? plan.projects : [];
+  const hasPlan = Boolean(plan && plan.plan_id) && blocks.length > 0;
+  el.jobDraftUpCard.hidden = !hasPlan;
+  if (!hasPlan) {
+    el.jobUpBlocksTable.innerHTML = "";
+    el.jobUpProjectsTable.innerHTML = "";
+    el.jobDraftUpActions.innerHTML = "";
+    el.jobDraftUpCounts.innerHTML = "";
+    return;
+  }
+  const planId = encodeURIComponent(plan.plan_id);
+  el.jobDraftUpActions.innerHTML = `
+    <a class="action-btn action-btn-primary" href="/up">Открыть УП</a>
+    <a class="action-btn action-btn-secondary" href="/curriculum/plans/${planId}/export.csv">Скачать CSV</a>`;
+  const totalHours = blocks.reduce((sum, block) => sum + Number(block.hours || 0), 0);
+  el.jobDraftUpCounts.innerHTML = [
+    ["Блоков", blocks.length],
+    ["Проектов", plan.project_count || projects.length],
+    ["Астр. часы", Math.round(totalHours)],
+  ]
+    .map(([label, value]) => `<span class="pill"><strong>${escapeHtml(String(value))}</strong> ${escapeHtml(label)}</span>`)
+    .join("");
+  el.jobUpBlocksTable.innerHTML = `
+    <thead><tr><th>Блок</th><th>Цель</th><th>Проектов</th><th>Астр. часы</th></tr></thead>
+    <tbody>${blocks
+      .map((block) => `
+        <tr>
+          <td><strong>${escapeHtml(block.name || "—")}</strong></td>
+          <td class="muted">${escapeHtml(truncateText(block.goal || "", 90))}</td>
+          <td>${escapeHtml(String(block.project_count || 0))}</td>
+          <td>${escapeHtml(String(block.hours || 0))}</td>
+        </tr>`)
+      .join("")}</tbody>`;
+  el.jobUpProjectsTable.innerHTML = `
+    <thead><tr><th>№</th><th>Блок</th><th>Название проекта</th><th>Образовательные результаты</th><th>Навыки</th><th>Инструменты</th><th>Часы</th></tr></thead>
+    <tbody>${projects.map(draftUpProjectRow).join("")}</tbody>`;
+}
+
+function draftUpProjectRow(project) {
+  const outcomes = Array.isArray(project.outcomes) ? project.outcomes : [];
+  const skills = Array.isArray(project.skills) ? project.skills : [];
+  const tools = Array.isArray(project.tools) ? project.tools : [];
+  const skillChips = skills
+    .map((skill) => `<span class="pill skill-role-${escapeHtml(skill.role || "primary")}">${escapeHtml(skill.name || "")}</span>`)
+    .join(" ");
+  const outcomeList = outcomes.length
+    ? `<ul class="draft-up-outcomes">${outcomes.slice(0, 4).map((item) => `<li>${escapeHtml(truncateText(item, 80))}</li>`).join("")}</ul>`
+    : "<span class=\"muted\">—</span>";
+  return `
+    <tr>
+      <td>${escapeHtml(String(project.order ?? ""))}</td>
+      <td class="muted">${escapeHtml(truncateText(project.block || "", 40))}</td>
+      <td><strong>${escapeHtml(project.title || "—")}</strong></td>
+      <td>${outcomeList}</td>
+      <td class="draft-up-skills">${skillChips || "<span class=\"muted\">—</span>"}</td>
+      <td class="muted">${escapeHtml(tools.join(", ") || "—")}</td>
+      <td>${escapeHtml(String(project.hours ?? 0))}</td>
+    </tr>`;
 }
 
 function renderPipelineResult(items) {

@@ -371,7 +371,15 @@ def test_intake_job_runs_pipeline_into_reference_and_curriculum() -> None:
     assert isinstance(dag["waves"], list) and dag["waves"]
     assert isinstance(dag["final_edges"], list)
     assert dag["acyclic"] in {True, False}
-    assert job["result_payload"]["curriculum_plan"]["plan_id"]
+    plan_payload = job["result_payload"]["curriculum_plan"]
+    assert plan_payload["plan_id"]
+    assert isinstance(plan_payload["blocks"], list) and plan_payload["blocks"]
+    assert plan_payload["blocks"][0]["name"]
+    assert "project_count" in plan_payload["blocks"][0] and "hours" in plan_payload["blocks"][0]
+    assert isinstance(plan_payload["projects"], list) and plan_payload["projects"]
+    first_project = plan_payload["projects"][0]
+    assert first_project["title"] and "order" in first_project
+    assert "skills" in first_project and "tools" in first_project
     assert client.get(f"/intake/jobs/{job['id']}/status").json()["status"] == "succeeded"
     detail_page = client.get(f"/intake/jobs/{job['id']}")
     assert detail_page.status_code == 200
@@ -384,6 +392,8 @@ def test_intake_job_runs_pipeline_into_reference_and_curriculum() -> None:
     assert "recommended_action" in panel_js
     assert "renderDag" in panel_js and "dag-svg" in panel_js
     assert 'id="jobDagMap"' in detail_page.text
+    assert "renderDraftUp" in panel_js
+    assert 'id="jobUpBlocksTable"' in detail_page.text and 'id="jobUpProjectsTable"' in detail_page.text
     assert client.get("/reference/summary").json()["skills"] >= 3
     assert client.get("/curriculum/plans").json()[0]["plan_id"] == job["result_payload"]["curriculum_plan"]["plan_id"]
 

@@ -7,7 +7,7 @@ from typing import Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.models import Competency
+from app.core.models import Competency, UPSkeleton
 from app.modules.curriculum.repo import CatalogSkill, CompetencyLinkResult, CurriculumCatalogRepo
 from app.modules.curriculum.stages import stage_adjudicate
 from app.modules.curriculum.stages.pipeline import run_catalog_pipeline
@@ -233,7 +233,11 @@ class IntakeService:
                 "review_count": sum(1 for item in saved if item.created_review),
                 "council": council_report,
                 "dag": _dag_summary(result.dag_payload),
-                "curriculum_plan": {"plan_id": plan.plan_id, "project_count": plan.project_count},
+                "curriculum_plan": {
+                    "plan_id": plan.plan_id,
+                    "project_count": plan.project_count,
+                    **_curriculum_summary(result.up),
+                },
                 "reports": result.reports,
             }
             return self.repo.update_intake_job(
@@ -407,6 +411,33 @@ class IntakeJobCreate(BaseModel):
     file_path: str | None = None
     use_council: bool = True
     use_llm: bool = False
+
+
+def _curriculum_summary(up: UPSkeleton) -> dict[str, Any]:
+    """Compact block + project tables for the intake job draft-UP view."""
+    rows = up.rows or [project for block in up.blocks for project in block.projects]
+    blocks = [
+        {
+            "name": block.name,
+            "goal": "; ".join(block.goals) if block.goals else "",
+            "project_count": len(block.projects),
+            "hours": round(sum(project.hours_astro for project in block.projects), 1),
+        }
+        for block in up.blocks
+    ]
+    projects = [
+        {
+            "order": project.order,
+            "block": project.block,
+            "title": project.title,
+            "outcomes": project.learning_outcomes,
+            "skills": [{"name": ref.canonical_name, "role": ref.role} for ref in project.competency_refs],
+            "tools": list(project.required_tools),
+            "hours": project.hours_astro,
+        }
+        for project in sorted(rows, key=lambda item: item.order)
+    ]
+    return {"blocks": blocks, "projects": projects}
 
 
 def _dag_summary(dag_payload: dict[str, Any]) -> dict[str, Any]:
