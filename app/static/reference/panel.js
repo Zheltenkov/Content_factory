@@ -713,22 +713,24 @@ function skillCardMarkup(item) {
   const hint = item.similarity_hint || {};
   const action = item.recommended_action || {};
   const hintClass = hint.class || "neutral";
+  const skillHref = encodeURIComponent(item.skill_id);
+  const skillAttr = escapeHtml(String(item.skill_id));
   const nearest = item.nearest_name
-    ? `<span class="skill-card-nearest">Ближайший в каталоге: <a href="/catalog-admin/skills/${item.skill_id}">${escapeHtml(item.nearest_name)}</a></span>`
+    ? `<span class="skill-card-nearest">Ближайший в каталоге: <a href="/catalog-admin/skills/${skillHref}">${escapeHtml(item.nearest_name)}</a></span>`
     : "";
   const council = item.council_agreement === null || item.council_agreement === undefined
     ? ""
     : ` · жюри <b>${escapeHtml(String(item.council_agreement))}</b>`;
   const tools = Array.isArray(item.tools) && item.tools.length ? ` · ${escapeHtml(item.tools.join(", "))}` : "";
   return `
-    <article class="intake-skill-card" data-skill="${item.skill_id}">
+    <article class="intake-skill-card" data-skill="${skillAttr}">
       <header class="skill-card-head">
         <div class="skill-card-title">
           <strong>${escapeHtml(item.name)}</strong>
           ${item.bloom ? `<span class="pill bloom-pill">Блум: ${escapeHtml(item.bloom)}</span>` : ""}
         </div>
         <div class="skill-card-actions" role="group" aria-label="Решение методолога">
-          <a class="card-act create" title="Создать новый skill" href="/catalog-admin/skills/${item.skill_id}">＋</a>
+          <a class="card-act create" title="Создать новый skill" href="/catalog-admin/skills/${skillHref}">＋</a>
           <a class="card-act link" title="Привязать к каталогу" href="/reviews?status=open">⟷</a>
           <a class="card-act reject" title="Открыть в очереди решений" href="/reviews?status=open">✕</a>
         </div>
