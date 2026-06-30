@@ -12,7 +12,14 @@ packages:
   checker:
     paths:
       - app/modules/checker/**/*.py
-    max_lines: 3000
+    max_lines: 3600
+    budget_override: true
+    previous_max_lines: 3000
+    reason: >
+      The auditor carries two full axes (structural registry + didactic jury and
+      debate), plus improvement and reverse-extraction. 3000 was sized before the
+      didactic debate/report and reverse-extraction surfaces landed. Revisit if the
+      module grows further without new capability.
   curriculum:
     paths:
       - app/modules/curriculum/**/*.py

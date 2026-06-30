@@ -97,7 +97,7 @@ class DidacticJuryConfig(BaseModel):
     generator_model: str = "<GENERATOR_MODEL>"
     jury_models: list[str] = Field(default_factory=list)
     debate_roles: dict[str, str] = Field(default_factory=dict)
-    provider: str = "openrouter"
+    provider: str = "polza"
     abstain_confidence: float = 0.55
     didactic_floor: float = 3.0
     debate_on_escalate: bool = True

@@ -771,7 +771,7 @@ function bindModelMenu() {
   menu.querySelectorAll("[data-model]").forEach((item) => item.addEventListener("click", () => {
     menu.querySelectorAll("[data-model]").forEach((option) => option.setAttribute("aria-selected", "false"));
     item.setAttribute("aria-selected", "true");
-    button.textContent = item.dataset.model === "openrouter" ? "ИИ" : item.dataset.model.slice(0, 2).toUpperCase();
+    button.textContent = item.dataset.model === "polza" ? "ИИ" : item.dataset.model.slice(0, 2).toUpperCase();
     menu.hidden = true;
     button.setAttribute("aria-expanded", "false");
   }));

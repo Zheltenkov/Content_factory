@@ -227,7 +227,7 @@ def _prompt(name: str, **values: Any) -> str:
 def _client(model: str, config: Any, client_factory: ClientFactory | None) -> Any:
     if client_factory is not None:
         return client_factory(model)
-    return create_llm_client(provider=getattr(config, "provider", "openrouter"), model=model)
+    return create_llm_client(provider=getattr(config, "provider", "polza"), model=model)
 
 
 def _json(value: Any) -> str:

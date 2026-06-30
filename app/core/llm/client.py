@@ -21,9 +21,13 @@ class LLMAPIError(RuntimeError):
 
 
 class TokenUsage(BaseModel):
-    """Provider-neutral token usage snapshot."""
+    """Provider-neutral token usage snapshot.
 
-    model_config = ConfigDict(extra="forbid")
+    Providers append their own usage fields (OpenRouter/polza add ``cost``,
+    ``plugins``, …); those are ignored rather than rejected.
+    """
+
+    model_config = ConfigDict(extra="ignore")
 
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
@@ -123,9 +127,12 @@ class OpenAICompatibleTransport:
     @classmethod
     def from_env(cls, *, provider: str | None, model: str) -> "OpenAICompatibleTransport":
         """Create a transport from env for OpenAI or OpenRouter-compatible routes."""
-        normalized = (provider or os.getenv("LLM_PROVIDER") or "openrouter").strip().lower()
+        normalized = (provider or os.getenv("LLM_PROVIDER") or "polza").strip().lower()
         timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "60"))
-        if normalized == "openai":
+        if normalized == "polza":
+            api_key = os.getenv("POLZA_AI_API_KEY")
+            endpoint = os.getenv("POLZA_CHAT_COMPLETIONS_URL", "https://polza.ai/api/v1/chat/completions")
+        elif normalized == "openai":
             api_key = os.getenv("OPENAI_API_KEY")
             endpoint = os.getenv("OPENAI_CHAT_COMPLETIONS_URL", "https://api.openai.com/v1/chat/completions")
         elif normalized == "openrouter":
@@ -179,10 +186,11 @@ class OpenAICompatibleTransport:
 
 def create_llm_client(*, provider: str | None = None, model: str | None = None) -> LLMClient:
     """Create the default singleton-style client from environment settings."""
-    resolved_provider = provider or os.getenv("LLM_PROVIDER") or "openrouter"
+    resolved_provider = provider or os.getenv("LLM_PROVIDER") or "polza"
     resolved_model = (
         model
         or os.getenv("LLM_MODEL")
+        or os.getenv("POLZA_AI_MODEL")
         or os.getenv("OPENROUTER_MODEL")
         or os.getenv("OPEN_ROUTER_MODEL")
         or os.getenv("OPENAI_MODEL")
