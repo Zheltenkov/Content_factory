@@ -3297,7 +3297,7 @@ def _ensure_indicator_row(
         )
         .order_by(INDICATOR_ROW.c.id)
         .limit(1)
-    ).scalar_one_or_none()
+    ).mappings().first()
     if existing is not None:
         if existing["status"] == "deprecated":
             con.execute(INDICATOR_ROW.update().where(INDICATOR_ROW.c.id == existing["id"]).values(status="active", notes=source_note))
