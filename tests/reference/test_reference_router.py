@@ -19,6 +19,9 @@ def test_reference_catalog_read_edit_and_review_queue() -> None:
     assert summary.status_code == 200
     assert summary.json()["competencies"] == 1
     assert summary.json()["open_reviews"] == 1
+    # profiles counter drives the catalog-admin sidebar (was missing -> rendered "?")
+    assert "profiles" in summary.json()
+    assert summary.json()["profiles"] == 0
 
     listed = client.get("/reference/competencies")
     assert listed.status_code == 200

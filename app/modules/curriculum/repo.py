@@ -1392,6 +1392,12 @@ class CurriculumCatalogRepo:
 
         with self._connect() as con:
             return {
+                "profiles": int(
+                    con.execute(
+                        sa.select(sa.func.count()).select_from(PROFILE).where(PROFILE.c.slug != SERVICE_PROFILE_SLUG)
+                    ).scalar()
+                    or 0
+                ),
                 "competencies": int(con.execute(sa.select(sa.func.count()).select_from(COMPETENCY)).scalar() or 0),
                 "skills": int(con.execute(sa.select(sa.func.count()).select_from(SKILL).where(SKILL.c.status != "deprecated")).scalar() or 0),
                 "indicators": int(con.execute(sa.select(sa.func.count()).select_from(INDICATOR_ROW)).scalar() or 0),
