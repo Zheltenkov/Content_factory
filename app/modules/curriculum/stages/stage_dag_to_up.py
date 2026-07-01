@@ -83,7 +83,7 @@ def _project_row(project: ProjectBlueprint, by_id: dict[str, Competency], spec: 
         block=project.block_key,
         block_goal=f"Освоить: {', '.join(primary_names)}",
         order=order,
-        title=f"Проект {order}. {project.title or _compact_title(project.block_key)}",
+        title=_project_name(project, primary_names),
         description=project.artifact,
         outcomes_know=know,
         outcomes_can=can,
@@ -98,6 +98,18 @@ def _project_row(project: ProjectBlueprint, by_id: dict[str, Competency], spec: 
         hours_astro=_hours([by_id[item.node.tmp_id] for item in project.occurrences if item.node.tmp_id in by_id]),
         metadata=_project_metadata(project),
     )
+
+
+def _project_name(project: ProjectBlueprint, primary_names: list[str]) -> str:
+    """Name a project after the skills it delivers, not a generic "Проект N"."""
+    names = _dedupe([name.strip() for name in primary_names if name.strip()])
+    if not names:
+        return project.title or _compact_title(project.block_key)
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return f"{names[0]}, {names[1]}"
+    return f"{names[0]}, {names[1]} +{len(names) - 2}"
 
 
 def _outcomes_from_occurrences(occurrences: list[SkillOccurrence]) -> tuple[list[str], list[str], list[str]]:

@@ -42,6 +42,8 @@ def test_regression_pipeline_builds_catalog_dag_and_up_offline() -> None:
     assert result.up.status == "built"
     assert result.up.rows
     assert result.up.rows[0].competency_refs
+    # projects are named after the skills they deliver, not a generic "Проект N"
+    assert not any(row.title.startswith("Проект ") for row in result.up.rows)
     assert result.profile_package().competencies == result.competencies
 
 
