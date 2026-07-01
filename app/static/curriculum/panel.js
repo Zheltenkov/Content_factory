@@ -40,7 +40,14 @@ const el = {
   upProjectsTable: document.getElementById("upProjectsTable"),
   upProjectsCount: document.getElementById("upProjectsCount"),
   upProjectsTitle: document.getElementById("upProjectsTitle"),
+  heroTitle: document.getElementById("curriculumHeroTitle"),
+  heroSubtitle: document.getElementById("curriculumHeroSubtitle"),
+  heroMeta: document.getElementById("curriculumHeroMeta"),
+  backToPlanLink: document.getElementById("backToPlanLink"),
+  templateStepper: document.getElementById("templateStepper"),
 };
+
+const TEMPLATE_FOCUS = window.location.pathname.endsWith("/template-proposals");
 
 function planIdFromLocation() {
   const match = window.location.pathname.match(/^\/up\/plans\/(\d+)/);
@@ -99,6 +106,7 @@ async function loadPlan(planId) {
   renderProjectsTable();
   renderTemplateProposals();
   renderSummary();
+  if (TEMPLATE_FOCUS) applyTemplateFocus(planId);
   await loadSelectedProject();
   setStatus(`${cascade.direction || "Направление"} · ${cascade.blocks.length} блоков`);
 }
@@ -285,6 +293,54 @@ function renderTemplateProposals() {
     return;
   }
   el.templateProposalList.innerHTML = proposals.map(renderTemplateProposal).join("");
+  if (TEMPLATE_FOCUS) renderTemplateStepper();
+}
+
+function applyTemplateFocus(planId) {
+  document.body.classList.add("templates-focus");
+  document.querySelectorAll(".templates-focus-only").forEach((node) => {
+    node.hidden = false;
+  });
+  if (el.heroTitle) el.heroTitle.textContent = "Предложения шаблонов УП";
+  if (el.heroSubtitle) {
+    el.heroSubtitle.textContent =
+      "Процесс: система предлагает шаблоны по принятым навыкам, методолог редактирует и принимает. После принятия УП перестраивается.";
+  }
+  if (el.heroMeta) {
+    const brief = state.currentPlan?.brief_id || state.currentPlan?.metadata?.brief_id;
+    el.heroMeta.hidden = false;
+    el.heroMeta.textContent = `учебный план #${planId}${brief ? ` · бриф #${brief}` : ""}`;
+  }
+  if (el.backToPlanLink) el.backToPlanLink.href = `/up/plans/${planId}`;
+  renderTemplateStepper();
+}
+
+function renderTemplateStepper() {
+  if (!el.templateStepper) return;
+  const proposals = state.templateProposals || [];
+  const counts = proposals.reduce((acc, item) => {
+    acc[item.status] = (acc[item.status] || 0) + 1;
+    return acc;
+  }, {});
+  const steps = [
+    ["Автопредложение", `Сгенерировано: ${proposals.length}.`],
+    ["Редактирование", `Открыто: ${counts.open || 0}.`],
+    ["Принятие", `Принято: ${counts.accepted || 0}, отклонено: ${counts.rejected || 0}.`],
+    ["Перестройка УП", "Запускается автоматически при принятии шаблона."],
+  ];
+  el.templateStepper.hidden = false;
+  el.templateStepper.innerHTML = steps
+    .map(
+      ([title, note], index) => `
+      <div class="workflow-step">
+        <span class="workflow-step-index">${index + 1}</span>
+        <div class="workflow-step-body">
+          <span class="workflow-step-label">${escapeHtml(title)}</span>
+          <span class="workflow-step-description">${escapeHtml(note)}</span>
+        </div>
+      </div>`,
+    )
+    .join("");
 }
 
 function renderTemplateProposal(proposal) {

@@ -3157,6 +3157,38 @@ body.s21-product.methodologist-product .pill.resolution-unresolved,
   grid-column: 1 / -1;
 }
 
+.templates-focus-only {
+  display: none;
+}
+
+body.templates-focus a.templates-focus-only {
+  display: inline-flex;
+}
+
+body.templates-focus .curriculum-editor-only {
+  display: none;
+}
+
+body.templates-focus #templateStepper {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin-bottom: 14px;
+}
+
+body.templates-focus .up-projects-panel,
+body.templates-focus #projectForm,
+body.templates-focus .curriculum-grid > .side-panel {
+  display: none;
+}
+
+body.templates-focus .curriculum-grid {
+  display: block;
+}
+
+body.templates-focus .template-proposal-panel {
+  grid-column: 1 / -1;
+}
+
 .up-projects-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--m-line);

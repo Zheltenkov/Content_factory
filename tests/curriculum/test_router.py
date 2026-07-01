@@ -100,6 +100,10 @@ def test_curriculum_csv_import_export_and_panel_render() -> None:
     assert plan_page.status_code == 200
     assert 'id="upProjectsTable"' in plan_page.text
 
+    templates_page = client.get(f"/up/plans/{plan_id}/template-proposals")
+    assert templates_page.status_code == 200
+    assert 'id="templateStepper"' in templates_page.text
+
     exported = client.get(f"/curriculum/plans/{plan_id}/export.csv")
     assert exported.status_code == 200
     assert "Название проекта" in exported.text
@@ -125,6 +129,7 @@ def test_curriculum_csv_import_export_and_panel_render() -> None:
     assert js.status_code == 200
     assert "renderProjectsTable" in js.text
     assert "planIdFromLocation" in js.text
+    assert "applyTemplateFocus" in js.text and "renderTemplateStepper" in js.text
     for endpoint in (
         "/curriculum/plans/${planId}/template-proposals",
         "/curriculum/plans/${planId}/template-proposals/generate",

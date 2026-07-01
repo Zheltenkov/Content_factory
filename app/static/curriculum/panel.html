@@ -55,16 +55,19 @@
       <section class="content-panel content-panel-intake">
         <section class="hero">
           <div>
-            <a class="back-link" href="/intake">Рабочий стол</a>
-            <h1>Учебный план</h1>
-            <p>Редактор persisted-строк УП: каскад направление → блок → проект, ручная правка, импорт и экспорт CSV в формате шаблона.</p>
+            <a class="back-link" id="curriculumBackLink" href="/intake">Рабочий стол</a>
+            <h1 id="curriculumHeroTitle">Учебный план</h1>
+            <p id="curriculumHeroSubtitle">Редактор persisted-строк УП: каскад направление → блок → проект, ручная правка, импорт и экспорт CSV в формате шаблона.</p>
+            <div class="small muted" id="curriculumHeroMeta" hidden></div>
           </div>
-          <div class="review-actions">
-            <label class="file-button action-btn action-btn-secondary">
+          <div class="review-actions" id="curriculumHeroActions">
+            <a class="action-btn action-btn-secondary templates-focus-only" id="backToPlanLink" href="/up" hidden>Назад к УП</a>
+            <a class="action-btn action-btn-secondary templates-focus-only" href="/catalog-admin/artifact-templates" hidden>Рабочие шаблоны</a>
+            <label class="file-button action-btn action-btn-secondary curriculum-editor-only">
               CSV
               <input id="csvInput" type="file" accept=".csv,text/csv" />
             </label>
-            <button id="exportCsv" class="action-btn action-btn-primary" type="button">Экспорт CSV</button>
+            <button id="exportCsv" class="action-btn action-btn-primary curriculum-editor-only" type="button">Экспорт CSV</button>
           </div>
         </section>
 
@@ -173,11 +176,12 @@
             </div>
           </form>
 
-          <section class="editor-panel" aria-label="Предложения шаблонов УП">
+          <section class="editor-panel template-proposal-panel" id="templateProposalPanel" aria-label="Предложения шаблонов УП">
             <div class="inline-actions">
               <h2>Шаблоны УП</h2>
               <button id="regenerateTemplateProposals" class="action-btn action-btn-primary" type="button">Сгенерировать заново</button>
             </div>
+            <div class="workflow-stepper templates-focus-only" id="templateStepper" hidden></div>
             <div id="templateProposalSummary" class="metrics"></div>
             <div id="templateProposalList" class="reference-list compact"></div>
           </section>
